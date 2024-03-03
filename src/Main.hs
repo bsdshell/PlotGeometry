@@ -683,7 +683,6 @@ mymain = do
       animaStateArr <- initAnimaState
 
       -- mymain
-      -- mainLoopSimple window3d refCamRot refGlobal refFrame animaStateArr cx' ioArray
       -- thead 1
       -- G.makeContextCurrent mw0
       mainLoop (window3d, window2d) refCamRot refGlobal refFrame animaStateArr cx' ioArray
@@ -1072,41 +1071,6 @@ getModelviewMatrixRow = do
     writeFileList "/tmp/m1.x" $ map show ls
     return ls
 
-{-|
-  KEY: return 4x4 column major matrix
--}
-getModelviewMatrix2d :: IO [[GLdouble]]
-getModelviewMatrix2d = do
-  preservingMatrix $ do
-    let stateVar = GL.matrix (Just $ Modelview 16) :: StateVar (GLmatrix GLdouble)
-    m1 <- Data.StateVar.get stateVar
-    pre m1
-    ls <- getMatrixComponents RowMajor m1  -- [GLfloat]
-    let lt = (tran . partList 4) ls
-    writeFileList "/tmp/m22.x" $ map show lt
-    return lt
-  
-matrixTest :: IO ()
-matrixTest = do
-  let stateVar = GL.matrix (Just $ Modelview 16) :: StateVar (GLmatrix GLfloat)
-  m1 <- Data.StateVar.get stateVar
-  pre m1
-  ls <- getMatrixComponents RowMajor m1 -- [GLfloat]
-  pre ls
-  writeFileList "/tmp/m1.x" $ map show ls
-  return ()
-
-xor :: Bool -> Bool -> Bool
-xor True True = False
-xor True False = True
-xor False True = True
-xor False False = False
-
-initXYZAxis :: XYZAxis
-initXYZAxis = XYZAxis {xa = False, ya = False, za = False}
-
-moveBrick :: (Int, Int) -> [[((Int, Int), Int)]] -> [[((Int, Int), Int)]]
-moveBrick (x, y) cx = (map . map) (\(x0, y0) -> ((***) (+ x) (+ y) x0, y0)) cx
 
 rotateN :: Int -> [[a]] -> [[a]]
 rotateN n = foldl (\f g -> f . g) id $ take (abs n) $ repeat $ n >= 0 ? (reverse . DL.transpose) $ (DL.transpose . reverse)
@@ -1127,41 +1091,8 @@ mkTetris1 bt bid = (bt, bid, white, bk)
         [0, 0, 0, 0, 0]
       ]
 
-randomBlockX :: IORef GlobalRef -> IO (BlockAttr, [[Int]])
-randomBlockX ref = do
-  let tet1 =
-        [ [0, 0, 0, 0, 0],
-          [0, 0, 1, 0, 0],
-          [0, 1, 1, 1, 0],
-          [0, 0, 0, 0, 0],
-          [0, 0, 0, 0, 0]
-        ]
-  let tet2 =
-        [ [0, 0, 0, 0, 0],
-          [0, 0, 0, 0, 0],
-          [1, 1, 1, 1, 1],
-          [0, 0, 0, 0, 0],
-          [0, 0, 0, 0, 0]
-        ]
-  tetrisCount <- readIORef ref <&> tetrisCount_
-  let t1 = 1
-  let t2 = 2
-  let br1 = BlockAttr {isFilled_ = True, typeId_ = t1, tetrisNum_ = 0, color_ = white}
-  let ls = [(tet1, white, t1), (tet2, cyan, t2)]
-  inx <- randomInt 0 (len ls - 1)
-  let br = ls !! inx
-  ranColor <- randomColor
-  let bb = (br1 {typeId_ = br ^. _3, tetrisNum_ = tetrisCount + 1, color_ = ranColor}, br ^. _1)
-  modifyIORef ref (\x -> x {tetrisCount_ = tetrisCount + 1})
-  return bb
-
-printCameraRot :: IORef CameraRot -> IO()
-printCameraRot ioCameraRot = do
-  readIORef ioCameraRot >>= print
-
-printGlobalRef :: IORef GlobalRef -> IO()
-printGlobalRef ioGlobalRef= do
-  readIORef ioGlobalRef >>= print
+initXYZAxis :: XYZAxis
+initXYZAxis = XYZAxis {xa = False, ya = False, za = False}
 
 initGlobal :: GlobalRef
 initGlobal =
@@ -3019,172 +2950,6 @@ perspectiveModeView  refCamRot =  do
   GL.lookAt eye at up
   -- GL.lookAt (Vertex3 0 0 1.0 :: Vertex3 GLdouble) (Vertex3 0 0 0 :: Vertex3 GLdouble) (Vector3 0 1 0 :: Vector3 GLdouble)
   
-mainLoopSimple ::
-  G.Window ->
-  IORef CameraRot ->
-  -- IORef Step ->
-  IORef GlobalRef ->
-  IORef FrameCount ->
-  IOArray Int AnimaState ->
-  [[Vertex3 GLfloat]] ->
-  DAO.IOArray (Int, Int, Int) BlockAttr ->
-  IO ()
-mainLoopSimple w refCamRot refGlobal refGlobalFrame animaStateArr lssVex ioArray = unless' (G.windowShouldClose w) $ do
-  (width, height) <- G.getFramebufferSize w
-  viewport $= (Position 0 0, Size (fromIntegral width) (fromIntegral height))
-
-
-  GL.clear [ColorBuffer, DepthBuffer]
-  GL.depthFunc $= Just Lequal
-
-  -- G.setKeyCallback w (Just $ keyBoardCallBackNew refStep refGlobal ioArray) -- AronOpenGL
-  G.setKeyCallback w (Just $ keyBoardCallBackNew refCamRot refGlobal ioArray) -- AronOpenGL
-  G.setMouseButtonCallback w (Just $ mouseCallbackX refGlobal) -- mouse event
-  loadIdentity
-  
-  matrixMode $= Projection
-  loadIdentity
-  let zf = 0.5
-  perspective 0 1.0 zf (zf + 4.0)
-
-  matrixMode $= Modelview 0
-  loadIdentity
-  vex <- readFileStr "./input.x" >>= \x -> return (read x :: Vertex3 GLdouble)
-  -- GL.lookAt (Vertex3 0 0 1) (Vertex3 0 0 0 :: Vertex3 GLdouble) (Vector3 0 1 0 :: Vector3 GLdouble)
-
-  {--
-            y 
-               \
-          /       x
-          z  -->
-        
-
-            y          
-            |
-            -- > x               
-           /
-          z 
-
-       rotate 90 Y-axis (right-hand)
-
-          y  +x
-          | / 
-          | -- > +z
-
-       +x => +z
-       +y => +y
-       +z => -x
-
-  --}
-  GL.lookAt (Vertex3 0 0 1.0) (Vertex3 0 0 0 :: Vertex3 GLdouble) (Vector3 0 1 0 :: Vector3 GLdouble)
-
-  -- rotateWorld refCamRot (fromIntegral width) (fromIntegral height)
-
-  -- AronOpenGL.hs
-  -- delta refStep to modify Cam{xx, yy, zz} in degree
-  -- keyboardRot => rotate around {x-axis, y-axis, y-axis} in some degrees
-  -- keyboardRot refCam refStep (fromIntegral width) (fromIntegral height)
-  -- renderCoordinates
-  when False $ do
-    let m4 :: Vector3 GLfloat -> [[GLfloat]]
-        m4 (Vector3 x y z) = [ [x, 0, 0, 0],
-                               [y, 0, 0, 0],
-                               [z, 0, 0, 0],
-                               [0, 0, 0, 0]
-                             ]
-    let l3ToVec :: [GLfloat] -> Vector3 GLfloat
-        l3ToVec cx = Vector3 (head cx) (cx !! 1) (cx !! 2)
-    
-    rotX <- readIORef refCamRot <&> rotX_
-    vecX <- readIORef refCamRot <&> vecX_
-  
-    vecY <- readIORef refCamRot <&> vecY_
-    vecZ <- readIORef refCamRot <&> vecZ_
-    let deg = 10 * rotX
-    ls <- getModelviewMatrixCol
-    logFileG ["Before rotate deg  vecX, RowMajor"]
-    let f s = map (\x -> abs x < 0.00001 ? 0 $ x) s
-    let lx = (tran . partList 4) $ f ls
-    tx <- (cap . printMat) lx
-    logFileG ["look_from 1.0 0 0)"]
-    logFileG [tx]
-    logFileG ["vecY00"]
-    logFileG [show vecY]
-    logFileG ["vecZ00"]
-    logFileG [show vecZ]
-    dg <- readFile "/tmp/ee.x" >>= \x -> return (read x :: GLfloat)
-    -- rotate 90 vecY -- rotate X-axis beta  degree/radian
-    -- Move to Vertex3 0.5 0 0
-    (v, rx) <- readFile "/tmp/aa.x" >>= \x -> return (read x :: (Vector3 GLfloat, GLfloat))
-    -- multiModelviewVec v
-    -- multiRotateY rx
-    lt <- getModelviewMatrixCol
-  
-    -- Row Major Matrix => Column Major Matrix
-    let mc = (tran . partList 4) lt
-    ms <- (cap . printMat) $ (map . map) (\x -> abs x < 0.00001 ? 0 $ x) mc
-    logFileG ["model00 rot 90 Y-axis"]
-    logFileG [ms]
-    let vecY' = let m = multiMat mc $ m4 vecY in l3ToVec $ join $ getColumn m 1
-    let vecZ' = let m = multiMat mc $ m4 vecZ in l3ToVec $ join $ getColumn m 1
-    logFileG ["After rotate deg  vecX, RowMajor"]
-    logFileG ["vecY11"]
-    logFileG [show vecY']
-    logFileG ["vecZ11"]
-    logFileG [show vecZ']
-    let lv = tran $ partList 4 $ f lt
-    s <- (cap . printMat) lv
-    logFileG [s]
-    printMat lv
-  
-  {--
-  when True $ do
-    rotY <- readIORef refCamRot <&> rotY_
-    vecY <- readIORef refCamRot <&> vecY_
-    let deg = 10 * rotY
-    let rad = degreeToRadian (rf deg)
-    rotate  deg vecY -- rotate y-axis beta  degree/radian
-  when True $ do
-    rotZ <- readIORef refCamRot <&> rotZ_
-    vecZ <- readIORef refCamRot <&> vecZ_
-    let deg = 10 * rotZ
-    rotate  deg vecZ -- rotate y-axis beta  degree/radian
-  when False $ do
-    testMeX (pi/2)
-    testMeY (pi/2)
-    testMeZ (pi/2)
-  
-  when True $ do
-    testMeX (pi*3/2)
-    testMeY (pi*3/2)
-    testMeZ (pi*3/2)
-  --}
-  
-  renderCoordinates
-  -- view matrix: http://xfido.com/html/indexUnderstandOpenGL.html
-  -- matrixMode $= Modelview 0
-  {--
-  let lv = circleN (Vertex3 0 0 0) 0.2 6
-  let cen = Vertex3 0 0 0
-  let r = 0.3
-  drawPrimitive' LineLoop red lv
-  --}
-  -- drawCubeQuad 0.3
-
-  preservingMatrix $ do
-    let lv = map (\x -> Vertex3 x 0.5 0) [0, 0 + 0.2 .. 1.0]
-    let ls = map (\x -> Vertex3 x 0   0) [0, 0 + 0.2 .. 1.0]
-    let lt = join $ zipWith (\x y -> [x, y]) lv ls
-    let lt' = zip lt $ join $ repeat [green, yellow, blue, cyan, gray, white]
-    drawPrimitive' TriangleStrip red lv
-  
-    renderPrimitive TriangleStrip $ mapM_(\(v, c) -> do
-        color c
-        vertex v) lt'
-  
-    pp "ok"
-  drawFinal w ioArray initRectGrid
-  mainLoopSimple w refCamRot refGlobal refGlobalFrame animaStateArr lssVex ioArray
 
 colorChange :: GLdouble -> Color3 GLdouble -> Color3 GLdouble
 colorChange x (Color3 a b c) = Color3 (a*x) (b*x) (c*x)
@@ -3517,31 +3282,6 @@ angle2Vector v0 v1 = acos $ (n0*n0 + n1*n1 - dx*dx) / (2 * n0 * n1)
 vecToList3 :: Vector3 a -> [a]
 vecToList3 (Vector3 x y z) = [x, y, z]
 
-  
-
-{--
-vecToM3x :: Vector3 GLdouble -> [[GLdouble]]
-vecToM3x (Vector3 x y z) = [
-                            [x, 0, 0],
-                            [y, 0, 0],
-                            [z, 0, 0]
-                           ]
-
-vecToM3y :: Vector3 GLdouble -> [[GLdouble]]
-vecToM3y (Vector3 x y z) = [
-                            [0, x, 0],
-                            [0, y, 0],
-                            [0, z, 0]
-                          ]
-  
-vecToM3z :: Vector3 GLdouble -> [[GLdouble]]
-vecToM3z (Vector3 x y z) = [
-                            [0, 0, x],
-                            [0, 0, y],
-                            [0, 0, z]
-                          ]
---}
-  
 vecToM4x :: Vector3 GLdouble -> [[GLdouble]]
 vecToM4x (Vector3 x y z) = [
                             [x, 0, 0, 0],
@@ -3599,26 +3339,6 @@ rotateWorldX refCamRot = do
   
 rotateWorld :: IORef CameraRot -> Double -> Double -> IO ()
 rotateWorld refCamRot w h = do
-  {--
-  modifyIORef refCamRot (\c -> c {alpha_ = alpha_ c + xx (delta_ c)})
-  modifyIORef refCamRot (\c -> c {beta_ = beta_ c + yy (delta_ c)})
-  modifyIORef refCamRot (\c -> c {gramma_ = gramma_ c + zz (delta_ c)})
-  modifyIORef refCamRot (\c -> c {dist_ = ww (delta_ c)})
-  --}
-  -- rotate ( alpha_  cam) ( Vector3 1 0 0 :: Vector3 GLdouble)  -- rotate x-axix alpha degree/radian
-  --                ↑→ degree
-  -- rotate ( beta_   cam) ( Vector3 0 1 0 :: Vector3 GLdouble)  -- rotate y-axis beta  degree/radian
-  --                ↑→ degree
-  -- rotate ( gramma_ cam) ( Vector3 0 0 1 :: Vector3 GLdouble)  -- rotate z-axis gamma degree/radian
-  --                ↑→ degree
-  -- multiModelviewVec v
-
-  {--
-  xyzRotVec <- readIORef refCamRot<&> xyzRotVec_
-  xyzRotDeg <- readIORef refCamRot <&> xyzRotDeg_
-  rotate xyzRotDeg xyzRotVec -- rotate y-axis beta  degree/radian
-  pp "ok"
-  --}
   currXYZ <- readIORef refCamRot <&> currXYZ_
   coordFrame <- readIORef refCamRot <&> coordFrame_
   case currXYZ of
@@ -3641,7 +3361,6 @@ rotateWorld refCamRot w h = do
           -- rotate xyzRotDeg (fx vecX) -- rotate y-axis beta  degree/radian
   
           let mo = let dg = (pi/180) * alpha in rotx dg
-          -- mo <- getModelviewMatrix2d
           mox <- (cap . printMat) mo
           logFileG ["mo"]
           logFileG [mox]
@@ -3704,7 +3423,6 @@ rotateWorld refCamRot w h = do
           -- rotate xyzRotDeg (fx vecX) -- rotate y-axis beta  degree/radian
   
           let mo = let dg = (pi/180) * beta in roty dg
-          -- mo <- getModelviewMatrix2d
           moy <- (cap . printMat) mo
           logFileG ["moy"]
           logFileG [moy]
@@ -3746,7 +3464,6 @@ rotateWorld refCamRot w h = do
           xyzRotDeg <- readIORef refCamRot <&> xyzRotDeg_
           -- rotate xyzRotDeg (fx vecZ) -- rotate y-axis beta  degree/radian
   
-          -- mo <- getModelviewMatrix2d
           let mo = let dg = (pi/180) * xyzRotDeg in rotz dg
           let vecX' = let m1 = vecToM3x $ fx vecX
                           m2 = multiMat mo m1
