@@ -1,0 +1,2 @@
+emptyLine::Interpreter()
+emptyLine = say ""
