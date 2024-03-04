@@ -26,6 +26,7 @@ import Control.Lens
     ( Field1(_1), Field2(_2), Field3(_3), Field4(_4), (<&>), (^.) )
 import qualified Data.Vector as VU
 import           AronModule
+import qualified Text.Printf as PR
                  
 -- import qualified Data.Vector.Unboxed as VU
 -- Unboxed only support
@@ -2200,6 +2201,80 @@ drawRectFill2d c (w, h) = do
     vx2 = Vertex3 x0    (-y0) 0
     vx3 = Vertex3 (-x0) (-y0) 0
 
+{-|
+    === KEY: fill rectangle
+
+    @
+             ↑
+             |
+        v0   ⟶   v1
+
+        ↑           |
+        |    +      ↓  -> y
+
+       v3    <—-    v2
+    @
+-}
+drawRectFill2dX :: Color3 GLdouble -> (GLfloat, GLfloat) -> IO ()
+drawRectFill2dX c (w, h) = do
+  drawQuadsColor c [vx0, vx1, vx2, vx3]
+  drawQuadsColor (f c) [vx0', vx1', vx2', vx3']
+  drawSegmentNoEnd (f c) (vx0, vx0')
+  drawSegmentNoEnd (f c) (vx1, vx1')
+  drawSegmentNoEnd (f c) (vx2, vx2')
+  drawSegmentNoEnd (f c) (vx3, vx3')
+  where
+    x0 = w / 2
+    y0 = h / 2
+    vx0 = Vertex3 (- x0) y0 0
+    vx1 = Vertex3 x0 y0 0
+    vx2 = Vertex3 x0 (- y0) 0
+    vx3 = Vertex3 (- x0) (- y0) 0
+    dep = -0.02
+    vx0' = Vertex3 (- x0) y0 dep
+    vx1' = Vertex3 x0 y0 dep
+    vx2' = Vertex3 x0 (- y0) dep
+    vx3' = Vertex3 (- x0) (- y0) dep
+    f (Color3 a b c) = Color3 (a * 0.5) (b * 0.5) (c * 0.5)
+
+{-|
+  === KEY: draw histgram in opengl 
+ -}
+drawHis :: [GLfloat] -> IO ()
+drawHis cx = do
+  let n = len cx
+  let δ = 1 / rf n
+  let w = δ - 0.002
+  let ls = map (\(a, b) -> (rf a, b)) $ zip cx [0 ..]
+  mapM_ ( \(h, c) -> do
+        let off = rf $ c * δ
+        preservingMatrix $ do
+          translate (Vector3 off (h / 2) 0 :: Vector3 GLdouble)
+          drawRectFill2dX white (w, (rf h))
+        preservingMatrix $ do
+          let strNum = PR.printf "%.1f" h :: String
+          strWidth <- GLUT.stringWidth GLUT.Roman strNum
+          -- strHeight <- GLUT.stringHeight GLUT.Roman str
+          -- 1000 => 1000 pixel
+          print $ "strWidth=" ++ (show $ rf strWidth / scaleFont)
+          let cen = off - ((rf strWidth) / (scaleFont * 2.0))
+          print $ "cen=" ++ (show cen)
+          print $ "off=" ++ (show off)
+          translate (Vector3 cen (-0.1) 0 :: Vector3 GLdouble)
+          renderText strNum
+    ) ls 
+
+drawHisgram :: [GLfloat] -> IO ()
+drawHisgram cx = do
+  preservingMatrix $ do
+    translate (Vector3 (-0.5) 0 0 :: Vector3 GLdouble)
+    drawHis cx
+
+renderText :: String -> IO ()
+renderText str = do
+  preservingMatrix $ do
+    GL.scale (1 / scaleFont :: GL.GLdouble) (1 / scaleFont) 1
+    GLUT.renderString GLUT.Roman str
 
 {-|
     === draw circle with center and radius
@@ -2768,6 +2843,18 @@ listToVex :: [a] -> Vertex3 a
 listToVex ls = Vertex3 (head lt) ((head . tail) lt) (last lt)
   where
     lt = take 3 ls
+
+{-|
+   === KEY: vector projects on plane
+-}
+projOnPlane :: (Num a, Eq a) => Vector3 a -> (Vector3 a, Vector3 a) -> Vector3 a
+projOnPlane v (v0, v1) = v - vp
+  where
+    vc = case v0 ⊗ v1 of
+              Nothing -> error "ERROR: two vectors can not be parallel, ERROR124"
+              Just v -> v
+    vp = (v `dot3ve` vc) *: vc
+
 {-|
 
   === KEY: point to a line, pt to a line, distance from a pt to a line

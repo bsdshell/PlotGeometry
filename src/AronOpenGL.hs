@@ -753,11 +753,16 @@ randomVertex n = do
           tripleToVertex3 [a, b, c] = Vertex3 a b 0.0
   return vexTuple
 
+{--
+ Sun  3 Mar 16:12:57 2024 
+ Move to AronGraphic
+
 renderText :: String -> IO ()
 renderText str = do
   preservingMatrix $ do
     GL.scale (1 / scaleFont :: GL.GLdouble) (1 / scaleFont) 1
     GLUT.renderString GLUT.Roman str
+--}
 
 -- |
 --    KEY: save image, save png, opengl save image, save png opengl
