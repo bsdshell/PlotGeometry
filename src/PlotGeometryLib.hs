@@ -2403,6 +2403,34 @@ drawAxis v cl = do
     cylinderArrow 1.0 cl
   
 {-|
+  === KEY: draw arrow from two 'Vertex3' 'GLfloat'
+ -}
+drawArrow :: (Vertex3 GLfloat, Vertex3 GLfloat) -> IO()
+drawArrow (p0, p1) = do 
+  let v = p0 -: p1
+  let ang = let r = if ve_2 v < 0 then -180/pi else 180/pi in r * angle2Vector (Vector3 1 0 0) v
+  preservingMatrix $ do
+    translate $ vec_ p0 
+    rotate ang (Vector3 0 0 1 :: Vector3 GLfloat)
+    cylinderArrowX l cl
+    where  
+      cl = [green, blue, yellow]
+      l = nr $ p0 -: p1
+
+drawArrowColor :: (Vertex3 GLfloat, Vertex3 GLfloat) -> [Color3 GLdouble] -> IO()
+drawArrowColor (p0, p1) cr = do 
+  let v = p0 -: p1
+  let ang = let r = 180/pi in r * angle2Vector (Vector3 1 0 0) v
+  preservingMatrix $ do
+    translate $ vec_ p0 
+    rotate ang (Vector3 0 0 1 :: Vector3 GLfloat)
+    cylinderArrowX l cr 
+    where  
+      l = nr $ p0 -: p1
+
+
+{-| 
+  
    === KEY: rotate vector to other vector
 
    * rotate v₀ to v₁ in angle θ radian around v₀ ⊗ v₁
@@ -2468,8 +2496,20 @@ cylinderArrow leng cl = do
     translate (Vector3 0 (rf cyLen) 0 :: Vector3 GLdouble)
     cone coneRadius coneHeigh 8 cl
 
+cylinderArrowX :: GLfloat -> [Color3 GLdouble] -> IO()
+cylinderArrowX leng cl = do
+  let cyRatio = 0.9 :: GLfloat
+  let cyLen =   rf $leng * cyRatio
+  -- let cyRadius = cyLen < 0.1 ? cyLen * 0.03 $ (cyLen < 0.4 ? cyLen * 0.01 $ 0.4 * 0.01)
+  let cyRadius = 0.4 * 0.01 
+  let coneRadius = cyRadius * 3.0 
+  let coneHeigh = rf $ leng * (1.0 - cyRatio)
+  rotate (-90) (Vector3 0 0 1 ::Vector3 GLdouble)
+  preservingMatrix $ do
+    cylinder cyRadius cyLen (True, True)  cl
+    translate (Vector3 0 (rf cyLen) 0 :: Vector3 GLdouble)
+    cone coneRadius coneHeigh 8 [red] 
 
-  
 coord :: IO()
 coord = do
   preservingMatrix $ do
@@ -2662,6 +2702,10 @@ vx_1 (Vertex3 x y z) = x
 vx_2 (Vertex3 x y z) = y
 vx_3 (Vertex3 x y z) = z
 
+ve_1 (Vector3 x y z) = x
+ve_2 (Vector3 x y z) = y
+ve_3 (Vector3 x y z) = z
+
 v_x (Vector3 x y z) = x
 v_y (Vector3 x y z) = y
 v_z (Vector3 x y z) = z
@@ -2766,3 +2810,12 @@ bk1 =
     [0, 0, 0, 0, 0],
     [0, 0, 0, 0, 0]
   ]
+
+drawPolygon :: [Vertex3 GLfloat] -> IO()
+drawPolygon cx = do 
+  let cl = join $ repeat [green, blue, yellow]
+  renderPrimitive LineLoop $ mapM_ (\(c, v) -> do
+                                    color c
+                                    vertex v
+                                   ) $ zip cl cx
+

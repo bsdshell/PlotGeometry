@@ -178,7 +178,35 @@ mymain = do
       G.terminate
       exitSuccess
 
-  
+{-|
+    \(\color{red}{Deprecated} \) Use 'circlePt'
+
+    === Draw xy-plane circle
+
+    KEY: draw simple circle on xy-plane
+
+    DATE: Sunday, 25 February 2024 23:09 PST
+-}
+circlePtX :: Vertex3 GLfloat -> GLfloat -> [Vertex3 GLfloat]
+circlePtX (Vertex3 x0 y0 z0) r =[let alpha = (pi2*n)/num in Vertex3 ((rf r)*sin(alpha) + x0) ((rf r)*cos(alpha) + y0) (0 + z0) | n <- [1..num]]
+   where
+       num = 4
+       pi2 = 2*pi::Float
+
+ptsList :: [Vertex3 GLfloat]
+ptsList =  
+      [ Vertex3 0.1 0.1 0,
+        Vertex3 0.2 0.2 0,
+        Vertex3 0.4 0.2 0,
+        Vertex3 0.25 0.34 0,
+        Vertex3 0.12 0.4 0,
+        Vertex3 0.0 0.0 0,
+        Vertex3 0.3 0.12 0,
+        Vertex3 0.4 0.1 0,
+        Vertex3 (-0.4) 0.1 0,
+        Vertex3 (-0.4) (-0.1) 0
+      ]
+
 mainLoop ::
   (G.Window, G.Window) ->
   IORef CameraRot ->
@@ -200,7 +228,7 @@ mainLoop (w2d, w3d) refCamRot refGlobal refGlobalFrame animaStateArr lssVex ioAr
   
 -- /Users/aaa/myfile/bitbucket/tmp/xx_9059.x
   rotateWorldX refCamRot
-  
+
   let cc = [green, blue, cyan, magenta, yellow]
   preservingMatrix $ do
     GL.scale (1:: GL.GLdouble) 2.0 1
@@ -271,11 +299,63 @@ mainLoop (w2d, w3d) refCamRot refGlobal refGlobalFrame animaStateArr lssVex ioAr
   -- G.swapBuffers w
 
   endWindow3d w3d
+{--
+ 
+   a b c
+   init a b
+   tail b c
+
+   a -> b
+   b -> c
+
+--} 
 
   -- xx1
   -- window 1
   beginWindow2d w2d
+  when False $ do
+    let pts = ptsList 
+    -- drawPolygon pts
+    -- cylinderArrow 0.5 [yellow, green, blue]
+    drawCircle' (Vertex3 0 0 0) 0.05 
+    drawArrow (Vertex3 0.1 0.1 0, Vertex3 0.5 0.5 0) 
+    drawArrow (Vertex3 0.0 0.0 0, Vertex3 (-0.5) 0.5 0) 
+    preservingMatrix $ do
+      GL.scale (1 :: GLfloat) 1 1
+      drawArrow (Vertex3 0.0 0.0 0, Vertex3 (-0.5) 0.5 0) 
+    preservingMatrix $ do
+      drawArrow (Vertex3 0.1 0.1 0, Vertex3 0.5 0.5 0) 
+
+  when False $ do
+    let pts = ptsList 
+    let co = join $ repeat [green, yellow, cyan, gray, magenta, white, blue]
+    preservingMatrix $ 
+      mapM_ (\(c, v) -> do 
+                  drawDotXX c v 0.02
+           ) $ zip co pts 
+  
   when True $ do
+    -- let pts = ptsList 
+    pts <- rfl "/tmp/aa.x" >>= \cx -> return $ map (\x -> read x :: (Vertex3 GLfloat)) cx
+    let pair x = zip (init x) (tail x)
+    let co = join $ repeat [green, yellow, cyan, gray, magenta, white, blue]
+    preservingMatrix $ 
+      mapM_ (\t -> do 
+                  drawArrow t 
+           ) $ pair pts 
+  
+  when False $ do
+    let ax = [0.1, 0.1 + 0.1 .. 0.8] 
+    let cx = map (\x -> Vertex3 x 0 0) ax 
+    let cy = map (\(x, y) -> Vertex3 x y 0) $ zip ax ax 
+    let pair x = zip (init x) (tail x)
+    let co = join $ repeat [green, yellow, cyan, gray, magenta, white, blue]
+    preservingMatrix $ 
+      mapM_ (\t -> do 
+                  drawArrow t 
+           ) $ zip cx cy 
+
+  when False $ do
     let width = 0.3
     let height = 0.2
     delta <- getRedisXf "delta" <&> rf

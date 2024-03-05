@@ -1677,6 +1677,31 @@ circleN (Vertex3 x0 y0 z0) r num =[let alpha = pi2*(rf n)/rf num in Vertex3 (rf 
             pi2 = 2*pi::Float
 
 {-|
+    === Draw xy-plane circle with $n$ segment
+
+    See 'circleNX' at xy-plane
+-}
+circleNX::Vertex3 GLfloat -> GLfloat -> Int -> [Vertex3 GLfloat]
+circleNX (Vertex3 x0 y0 z0) r num =[let alpha = pi2*(rf n)/rf num in Vertex3 (rf r*sin (alpha) + x0) (rf r*cos(alpha) + y0) (0 + z0) | n <- [0..num]]
+        where
+            pi2 = 2*pi::Float
+
+vec_ :: (Floating a) => (Vertex3 a) -> Vector3 a
+vec_ (Vertex3 x y z) = Vector3 x y z 
+
+drawCircleFilled :: (Color3 GLdouble) -> (Vertex3 GLfloat) -> GLfloat -> IO()
+drawCircleFilled cr p0 r = do 
+  preservingMatrix $ do
+    translate $ vec_ p0 
+    renderPrimitive TriangleFan $ mapM_ (\v -> do
+                                           color cr 
+                                           vertex v
+                                           ) ls
+    where
+      c0 = Vertex3 0 0 0 :: (Vertex3 GLfloat)
+      ls = c0 : circleNX c0 r 10
+
+{-|
     === Draw xy-plane circle with $n$ segment, draw arc, circle arc
 
     See 'circlePt' at xy-plane
@@ -1757,6 +1782,13 @@ drawDot ce = drawPrimitive' LineLoop c $ circle'X ce r
         where
             r = 0.01 :: GLfloat
             c = red
+
+drawDotX::(Color3 GLdouble) -> Vertex3 GLfloat -> IO()
+drawDotX cr p0 = drawDotXX cr p0 0.02 
+
+drawDotXX::(Color3 GLdouble) -> Vertex3 GLfloat -> GLfloat -> IO()
+drawDotXX cr p0 r = drawCircleFilled cr p0 r 
+
 {-|
     KEY: draw dot, small circle with radius r = 0.1 
 
@@ -2875,6 +2907,7 @@ ptToLine3d p0 (q1, q2) = nr vr
 {-|
 
   KEY: angle between two `Vector3 a` `Vertex3 a`
+  RETURN: radian
 
 -}
 angle2Vector :: (Floating a) => Vector3 a -> Vector3 a -> a
