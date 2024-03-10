@@ -1345,12 +1345,10 @@ keyBoardCallBack2d refCamRot refGlobalRef ioArray window key scanCode keyState m
             | k == G.Key'Space -> do
                 currXYZ <- readIORef refCamRot <&> currXYZ_
                 case currXYZ of
-                   v | v == 1 -> do
+                   v | v == 1 || v == 2 || v == 3 || v == 4 -> do
                          modifyIORef refCamRot (\s -> s {coordFrame_ = (Vector3 1 0 0, Vector3 0 1 0, Vector3 0 0 1)})
                          modifyIORef refCamRot (\s -> s {coordFrameMat_ = matId 4})                           
-                         pp "kk"
-                     | otherwise -> do
-                         pp "ok"
+                     | otherwise -> return () 
   
             | otherwise -> pp $ "Unknown Key Press" ++ show key
       | ks == G.KeyState'Released -> do
@@ -2230,7 +2228,6 @@ showCurrBoardArr arr = do
               centerBlock00 (x, y) initRectGrid (color_ b)
       )
       ls
-  pp "ok"
 
 
 initBlockAttr :: BlockAttr
@@ -2315,6 +2312,26 @@ cylinder r leng (left, right) cl = do
     renderPrimitive TriangleFan $ mapM_ (\v -> do
         color yellow
         vertex v) $ Vertex3 (r * cos 0) 0 (r * sin 0) : ls
+
+cylinderXX :: GLfloat -> GLfloat -> (Bool, Bool) -> [Color3 GLdouble]-> IO()
+cylinderXX r leng (left, right) cl = do
+  let d = 2.0*pi/10.0
+  let lw = [0, 0 + d .. 2*pi]
+  let lv = map (\x -> Vertex3 leng  (r * cos x) (r * sin x)) lw
+  let ls = map (\x -> Vertex3 0     (r * cos x) (r * sin x)) lw
+  let lt = join $ zipWith (\x y -> [x, y]) lv ls
+  let lt' = zip lt $ (join . repeat) cl
+  renderPrimitive TriangleStrip $ mapM_(\(v, c) -> do
+      color c
+      vertex v) lt'
+  when left $ do
+    renderPrimitive TriangleFan $ mapM_ (\v -> do
+        color green
+        vertex v) $ Vertex3 leng (r * cos 0) (r * sin 0) : lv
+  when right $ do
+    renderPrimitive TriangleFan $ mapM_ (\v -> do
+        color yellow
+        vertex v) $ Vertex3 0 (r * cos 0) (r * sin 0) : ls
 
 skewMatrix3 :: (Num a) => (a, a, a) -> [[a]]
 skewMatrix3 (x, y, z) = [
@@ -2408,14 +2425,42 @@ drawAxis v cl = do
 drawArrow :: (Vertex3 GLfloat, Vertex3 GLfloat) -> IO()
 drawArrow (p0, p1) = do 
   let v = p0 -: p1
-  let ang = let r = if ve_2 v < 0 then -180/pi else 180/pi in r * angle2Vector (Vector3 1 0 0) v
+  -- let ang = let r = if ve_2 v < 0 then  else 180/pi in r * angle2Vector (Vector3 1 0 0) v
+  let ang = let rad =  angle2Vector (Vector3 1 0 0) v 
+            in if ve_2 v < 0 then 180/pi * rad - pi else 180/pi * rad
   preservingMatrix $ do
-    translate $ vec_ p0 
+    translate $ vec_ p0  
     rotate ang (Vector3 0 0 1 :: Vector3 GLfloat)
     cylinderArrowX l cl
     where  
       cl = [green, blue, yellow]
       l = nr $ p0 -: p1
+
+drawArrowX :: (Vertex3 GLfloat, Vertex3 GLfloat) -> IO()
+drawArrowX (p0, p1) = do 
+  let ang = let rad =  angle2Vector (Vector3 1 0 0) v 
+            in if ve_2 v < 0 then -(180/pi * rad) else 180/pi * rad
+  preservingMatrix $ do
+    translate $ vec_ p0  
+    rotate ang (Vector3 0 0 1 :: Vector3 GLfloat)
+    cylinderArrowXX l cl
+    where  
+      cl = [green, blue, yellow]
+      v = p0 -: p1
+      l = nr v 
+
+drawArrowXX :: (Vertex3 GLfloat, Vertex3 GLfloat) -> IO()
+drawArrowXX (p0, p1) = do 
+  let ang = let rad =  angle2Vector (Vector3 1 0 0) v 
+            in if ve_2 v < 0 then -(180/pi * rad) else 180/pi * rad
+  preservingMatrix $ do
+    translate $ vec_ p0  
+    rotate ang (Vector3 0 0 1 :: Vector3 GLfloat)
+    cylinderArrowXXX l cl
+    where  
+      cl = [green, blue, yellow]
+      v = p0 -: p1
+      l = nr v 
 
 drawArrowColor :: (Vertex3 GLfloat, Vertex3 GLfloat) -> [Color3 GLdouble] -> IO()
 drawArrowColor (p0, p1) cr = do 
@@ -2498,17 +2543,66 @@ cylinderArrow leng cl = do
 
 cylinderArrowX :: GLfloat -> [Color3 GLdouble] -> IO()
 cylinderArrowX leng cl = do
-  let cyRatio = 0.9 :: GLfloat
+  let cyRatio = leng <= 0.1 ? 0.8 $ 0.9
   let cyLen =   rf $leng * cyRatio
-  -- let cyRadius = cyLen < 0.1 ? cyLen * 0.03 $ (cyLen < 0.4 ? cyLen * 0.01 $ 0.4 * 0.01)
-  let cyRadius = 0.4 * 0.01 
-  let coneRadius = cyRadius * 3.0 
-  let coneHeigh = rf $ leng * (1.0 - cyRatio)
-  rotate (-90) (Vector3 0 0 1 ::Vector3 GLdouble)
+  let cyRadius = leng <= 0.1 ? 0.002 $ cyLen * 0.01 
+  let coneRadius = cyRadius * 2
+  let coneHeigh = rf $ leng * (1.0 - cyRatio) 
+  logFileGEx False "" [
+                        "leng=" ++ show leng 
+                       ,"cyRatio=" ++ show cyRatio
+                       ,"cyLen=" ++ show cyLen
+                       ,"cyRadius=" ++ show cyRadius
+                       ,"coneRadius=" ++ show coneRadius
+                       ,"coneHeigh=" ++ show coneHeigh
+                       ]
   preservingMatrix $ do
+    rotate (-90) (Vector3 0 0 1 :: Vector3 GLdouble)
     cylinder cyRadius cyLen (True, True)  cl
     translate (Vector3 0 (rf cyLen) 0 :: Vector3 GLdouble)
     cone coneRadius coneHeigh 8 [red] 
+
+cylinderArrowXX :: GLfloat -> [Color3 GLdouble] -> IO()
+cylinderArrowXX leng cl = do
+  let cyRatio = leng <= 0.1 ? 0.8 $ 0.9
+  let cyLen =   rf $leng * cyRatio
+  let cyRadius = leng <= 0.1 ? 0.002 $ cyLen * 0.01 
+  let coneRadius = cyRadius * 2
+  let coneHeigh = rf $ leng * (1.0 - cyRatio) 
+  logFileGEx False "" [
+                        "leng=" ++ show leng 
+                       ,"cyRatio=" ++ show cyRatio
+                       ,"cyLen=" ++ show cyLen
+                       ,"cyRadius=" ++ show cyRadius
+                       ,"coneRadius=" ++ show coneRadius
+                       ,"coneHeigh=" ++ show coneHeigh
+                       ]
+  preservingMatrix $ do
+    -- rotate (-90) (Vector3 0 0 1 :: Vector3 GLdouble)
+    cylinderXX cyRadius cyLen (True, True) cl 
+    translate (Vector3 (rf cyLen) 0 0 :: Vector3 GLdouble)
+    coneX coneRadius coneHeigh 8 [red] 
+
+cylinderArrowXXX :: GLfloat -> [Color3 GLdouble] -> IO()
+cylinderArrowXXX leng cl = do
+  let cyRatio = 0.9 
+  let cyLen =   rf $leng * cyRatio
+  let cyRadius = 0.003
+  let coneRadius = cyRadius * 2
+  let coneHeigh = rf $ leng * (1.0 - cyRatio) 
+  logFileGEx False "" [
+                        "leng=" ++ show leng 
+                       ,"cyRatio=" ++ show cyRatio
+                       ,"cyLen=" ++ show cyLen
+                       ,"cyRadius=" ++ show cyRadius
+                       ,"coneRadius=" ++ show coneRadius
+                       ,"coneHeigh=" ++ show coneHeigh
+                       ]
+  preservingMatrix $ do
+    -- rotate (-90) (Vector3 0 0 1 :: Vector3 GLdouble)
+    cylinderXX cyRadius cyLen (True, True) cl 
+    translate (Vector3 (rf cyLen) 0 0 :: Vector3 GLdouble)
+    coneX coneRadius coneHeigh 8 [red] 
 
 coord :: IO()
 coord = do
@@ -2546,16 +2640,15 @@ coord = do
       rotate 90 (Vector3 1 0 0 :: Vector3 GLdouble)
       cone r lo nStep [blue]
     
-
-  
 {-|
 
-   KEY: cone
+   KEY: cone alond +y-axis
 
    @
    let r = 0.05 -- radius of circle
    let l = 0.5  -- length of cylinder
-   cone r l
+   let n = 8    -- n steps
+   cone r l n
    @
 -}
 cone :: GLfloat -> GLfloat -> Int -> [Color3 GLdouble] -> IO()
@@ -2572,6 +2665,35 @@ cone r leng n cl = do
   renderPrimitive TriangleFan $ mapM_ (\(v, c) -> do
       color c
       vertex v) $ (Vertex3 0 leng 0 :: Vertex3 GLfloat, white) : lp
+  renderPrimitive TriangleFan $ mapM_ (\(v, c) -> do
+      color c
+      vertex v) $ (Vertex3 0 0 0 :: Vertex3 GLfloat, white) : lp
+
+{-|
+
+   KEY: cone alone +x-axis
+
+   @
+   let r = 0.05 -- radius of circle
+   let l = 0.5  -- length of cylinder
+   let n = 8    -- n steps
+   coneX r l n
+   @
+-}
+coneX :: GLfloat -> GLfloat -> Int -> [Color3 GLdouble] -> IO()
+coneX r leng n cl = do
+  let d = 2.0*pi/fi n
+  -- let lc = [green, yellow, blue, cyan, gray, white]
+  let ld = [yellow, green, white, blue, gray, cyan]
+  let lw = [0, 0 + d .. 2.0*pi]
+  let lv = map (\x -> Vertex3 leng (r * cos x) (r * sin x)) lw
+  let ls = map (\x -> Vertex3 0    (r * cos x) (r * sin x)) lw
+  let lp = zip ls $ join $ repeat cl
+  let lt = join $ zipWith (\x y -> [x, y]) lv ls
+  -- (x, y, z) <- readAndParse "/tmp/tu.x" :: IO(GLfloat, GLfloat, GLfloat)
+  renderPrimitive TriangleFan $ mapM_ (\(v, c) -> do
+      color c
+      vertex v) $ (Vertex3 leng 0 0 :: Vertex3 GLfloat, white) : lp
   renderPrimitive TriangleFan $ mapM_ (\(v, c) -> do
       color c
       vertex v) $ (Vertex3 0 0 0 :: Vertex3 GLfloat, white) : lp
@@ -2615,22 +2737,22 @@ rotateWorldX refCamRot = do
           coordFrameMat <- readIORef refCamRot <&> coordFrameMat_
           let ls = join coordFrameMat
           multiModelviewMat ls
-          pp "n == 1"
+          return ()
       | n == 2 -> do
           coordFrameMat <- readIORef refCamRot <&> coordFrameMat_
           let ls = join coordFrameMat
           multiModelviewMat ls
-          pp "n == 2"
+          return ()
       | n == 3 -> do
           coordFrameMat <- readIORef refCamRot <&> coordFrameMat_
           let ls = join coordFrameMat
           multiModelviewMat ls
-          pp "n == 3"
+          return ()
       | n == 4 -> do
           coordFrameMat <- readIORef refCamRot <&> coordFrameMat_
           let ls = join coordFrameMat
           multiModelviewMat ls
-          pp "n == 4"  
+          return ()
       | otherwise -> do
           error $ "currXYZ invalid Integer = " ++ show currXYZ
 
@@ -2710,6 +2832,48 @@ v_x (Vector3 x y z) = x
 v_y (Vector3 x y z) = y
 v_z (Vector3 x y z) = z
 
+     
+
+f k = let x = round $ (rf . round) 1e10 * sin k; 
+          nd a = ceiling $ logBase 10 $ (rf . round) a; 
+          y = fi $ nd x - 1 in mod x y
+
+ns (Vertex3 x y z) | x + y > 0.3 = sin (x - y - z) 
+                   | x - y < 0   = sin (x + y + z)
+                   | x + y - z > 0.5 = sin (x + y - z)
+                   | x + y + z > 1   = cos (y + z) 
+                   | x + z     > 0.5 = sin (x) * cos (x - y - z) 
+                   | otherwise       = sin x
+
+drawTorusX::GLfloat -> GLfloat -> Int -> [Color3 GLdouble]-> IO()
+drawTorusX r br n cx = do
+  torus3' <- (mapM . mapM) (\v -> do 
+               let mod' = flip mod
+               let ve = vec_ v
+               let r =  ns v 
+               let ve' = (1 + r) *: ve
+               let vx = vecToVex ve' 
+               return vx
+             ) torus3
+  let cm = combinePt torus3' cx
+  mapM_ (drawSegmentFromTo red) torus3'
+  -- mapM_ (drawSegmentFromTo yellow) $ tran torus3
+  mapM_ (\row -> do
+            renderPrimitive TriangleStrip $ mapM_ (\(c, v) -> do
+                                                      color c
+                                                      vertex v
+                                                      ) row
+        ) cm
+  where
+    torus3::[[Vertex3 GLfloat]]
+    torus3 =[[Vertex3 (fx i j) 
+                (fy i j) 
+                (fz i j) | i <- [0..n]] | j <-[0..n]]
+            where
+                δ = 2*pi/rf n
+                fx = \i j -> let i' = rf i; j' = rf j in (br + r*cos (δ*i'))*cos (δ*j')
+                fy = \i j -> let i' = rf i; j' = rf j in r*sin (δ*i')
+                fz = \i j -> let i' = rf i; j' = rf j in (br + r*cos (δ*i'))*sin (δ*j')    
 
 sdfRect :: Vertex3 GLfloat -> Vertex3 GLfloat -> Bool -> GLfloat
 sdfRect r s isRound = isRound ? (if dx > 0 && dy > 0 then ds else  max dx dy) $ (min ds $ max dx dy)

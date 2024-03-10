@@ -229,14 +229,38 @@ mainLoop (w2d, w3d) refCamRot refGlobal refGlobalFrame animaStateArr lssVex ioAr
 -- /Users/aaa/myfile/bitbucket/tmp/xx_9059.x
   rotateWorldX refCamRot
 
-  let cc = [green, blue, cyan, magenta, yellow]
-  preservingMatrix $ do
-    GL.scale (1:: GL.GLdouble) 2.0 1
-    drawTorus 0.1 0.2 10 cc
+
+  when True $ do
+    preservingMatrix $ do
+      let cc = [green, blue, cyan, magenta, yellow]
+      GL.scale (1:: GL.GLdouble) 2.0 1
+      drawTorusX 0.1 0.2 20 cc
+
+  when False $ do
+    preservingMatrix $ do 
+      let cc = [green, blue, cyan, magenta, yellow]
+      let rad = 0.1
+      let leng = 0.4
+      let leftClose = True
+      let rightClose = True
+      cylinderXX rad leng (leftClose, rightClose) cc    
+
+  when False $ do
+    preservingMatrix $ do 
+      let cc = [green, blue, cyan, magenta, yellow]
+      cylinderArrowXX 0.8 cc    
+
+  when False $ do
+    preservingMatrix $ do 
+      let cc = [cyan, magenta, yellow]
+      drawArrowX (Vertex3 0 0 0, Vertex3 0.1 0.1 0)    
+    preservingMatrix $ do 
+      let cc = [cyan, magenta, yellow]
+      drawArrowX (Vertex3 0.1 0.1 0, Vertex3 (-0.3) 0.5 0)    
 
   preservingMatrix $ do
     renderCoordinates
-    pp "ok"
+
   preservingMatrix $ do
     let ax = map (\x -> Vertex3 (0.2 * x) 0.3 0) [0..3]
     let bx = map (\x -> Vertex3 (0.2 * x) 0.7 0) [0..3]
@@ -291,7 +315,6 @@ mainLoop (w2d, w3d) refCamRot refGlobal refGlobalFrame animaStateArr lssVex ioAr
       drawAxis (Vector3 0 0 1) [blue, fmap (*05) blue]
       drawCubeQuad 0.02
     redisDisconnect conn
-    pp "ok"
 
   -- drawFinal w ioArray initRectGrid
   showCurrBoardArr ioArray
@@ -313,6 +336,17 @@ mainLoop (w2d, w3d) refCamRot refGlobal refGlobalFrame animaStateArr lssVex ioAr
   -- xx1
   -- window 1
   beginWindow2d w2d
+  when True $ do
+    -- let pts = ptsList 
+    pts <- rfl "./aa.x" >>= \cx -> return $ map (\x -> read x :: (Vertex3 GLfloat)) cx
+    -- let pts = [Vertex3 0 0 0, Vertex3 0.4 0.4 0, Vertex3 0.2 (-0.3) 0, Vertex3 (-0.3) 0.35 0] 
+    let pair x = zip (init x) (tail x)
+    let co = join $ repeat [green, yellow, cyan, gray, magenta, white, blue]
+    preservingMatrix $ 
+      mapM_ (\t -> do 
+                  drawArrowX t 
+           ) $ pair pts 
+
   when False $ do
     let pts = ptsList 
     -- drawPolygon pts
@@ -336,24 +370,70 @@ mainLoop (w2d, w3d) refCamRot refGlobal refGlobalFrame animaStateArr lssVex ioAr
   
   when True $ do
     -- let pts = ptsList 
-    pts <- rfl "/tmp/aa.x" >>= \cx -> return $ map (\x -> read x :: (Vertex3 GLfloat)) cx
+    pts <- rfl "./aa.x" >>= \cx -> return $ map (\x -> read x :: (Vertex3 GLfloat)) cx
+    -- let pts = [Vertex3 0 0 0, Vertex3 0.4 0.4 0, Vertex3 0.2 (-0.3) 0, Vertex3 (-0.3) 0.35 0] 
     let pair x = zip (init x) (tail x)
     let co = join $ repeat [green, yellow, cyan, gray, magenta, white, blue]
     preservingMatrix $ 
       mapM_ (\t -> do 
-                  drawArrow t 
+                  drawArrowX t 
            ) $ pair pts 
-  
-  when False $ do
-    let ax = [0.1, 0.1 + 0.1 .. 0.8] 
+    mapM_ (\v -> drawCircleFilled green v 0.02) pts
+    
+  r1 <- redisGet "r1" <&> \s -> case s of
+                                  Just x -> read x :: Bool 
+                                  Nothing -> False
+  when r1 $ do
+    let ax = [0.02, 0.02 + 0.02 .. 0.90] 
     let cx = map (\x -> Vertex3 x 0 0) ax 
     let cy = map (\(x, y) -> Vertex3 x y 0) $ zip ax ax 
     let pair x = zip (init x) (tail x)
     let co = join $ repeat [green, yellow, cyan, gray, magenta, white, blue]
     preservingMatrix $ 
       mapM_ (\t -> do 
-                  drawArrow t 
+                  drawArrowX t 
            ) $ zip cx cy 
+{--
+ 
+   [(0, 0.30),    (0, 0.32),   (0, 0.34)]
+   [(0.30, 0.30), (0.32, 0.32) (0.34, 0.34)]
+
+   0.28 0.30 0.32 0.34
+   0.22 0.24 0.26 0.28 0.30 0.32 0.24
+ --}
+
+  
+  r2 <- redisGet "r2" <&> \s -> case s of
+                                  Just x -> read x :: Bool 
+                                  Nothing -> False
+
+  rls <- redisGet "rls" <&> \s -> case s of
+                                  Just x -> read x :: [GLfloat] 
+                                  Nothing -> [0.02, 0.02 + 0.02 .. 0.1] 
+  when r2 $ do
+    let ax = [0.02, 0.02 + 0.02 .. 0.90] :: [GLfloat] 
+    let cx = map (\y -> Vertex3 0 y 0) ax 
+    let cy = map (\(x, y) -> Vertex3 x y 0) $ zip ax ax 
+    let pair x = zip (init x) (tail x)
+    let co = join $ repeat [green, yellow, cyan, gray, magenta, white, blue]
+    preservingMatrix $ do 
+      -- translate (Vector3 (-0.90) 0 0 :: Vector3 GLdouble) 
+      mapM_ (\t -> do 
+                  drawArrowXX t 
+                  -- drawArrowX t 
+           ) $ zip cx cy 
+      logFileG ["cx=" ++ show cx]
+      logFileG ["cy=" ++ show cy]
+      logFileG ["zipcxcy=" ++ (show $ zip cx cy)]
+
+  when False $ do
+    preservingMatrix $ do 
+      let cc = [cyan, magenta, yellow]
+      drawArrowX (Vertex3 0 0 0, Vertex3 0.1 0.1 0)    
+    preservingMatrix $ do 
+      let cc = [cyan, magenta, yellow]
+      drawArrowX (Vertex3 0.1 0.1 0, Vertex3 (-0.3) 0.5 0)    
+
 
   when False $ do
     let width = 0.3

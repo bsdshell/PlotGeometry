@@ -1689,6 +1689,9 @@ circleNX (Vertex3 x0 y0 z0) r num =[let alpha = pi2*(rf n)/rf num in Vertex3 (rf
 vec_ :: (Floating a) => (Vertex3 a) -> Vector3 a
 vec_ (Vertex3 x y z) = Vector3 x y z 
 
+{-|
+    === Draw xy-plane circle with 10 segments
+-}
 drawCircleFilled :: (Color3 GLdouble) -> (Vertex3 GLfloat) -> GLfloat -> IO()
 drawCircleFilled cr p0 r = do 
   preservingMatrix $ do
@@ -2909,9 +2912,16 @@ ptToLine3d p0 (q1, q2) = nr vr
   KEY: angle between two `Vector3 a` `Vertex3 a`
   RETURN: radian
 
+  DATE: Fri  8 Mar 22:51:09 2024 
+  FIX: There is bug in the old formula to compute the angle
+
+  Change to the dot product formula
+  ang = acos (v0 dot3ve v1) / |v0||v1|
+
 -}
 angle2Vector :: (Floating a) => Vector3 a -> Vector3 a -> a
-angle2Vector v0 v1 = acos $ (n0*n0 + n1*n1 - dx*dx) / (2 * n0 * n1)
+angle2Vector v0 v1 = acos $ (v0 `dot3ve` v1) / (nr v0 * nr v1) 
+-- angle2Vector v0 v1 = acos $ (n0*n0 + n1*n1 - dx*dx) / (2 * n0 * n1)
   where 
     x0 = vecToVex v0
     x1 = vecToVex v1
@@ -4341,6 +4351,8 @@ drawTorus r br n cx = do
                 fx = \i j -> let i' = rf i; j' = rf j in (br + r*cos (δ*i'))*cos (δ*j')
                 fy = \i j -> let i' = rf i; j' = rf j in r*sin (δ*i')
                 fz = \i j -> let i' = rf i; j' = rf j in (br + r*cos (δ*i'))*sin (δ*j')    
+
+
 
 
 type Fx = Int -> Int -> GLfloat
