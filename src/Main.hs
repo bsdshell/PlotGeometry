@@ -1,6 +1,7 @@
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE RankNTypes #-}
 
 -- {-# LANGUAGE CPP #-}
 -- {-# LANGUAGE CPP #-}
@@ -207,6 +208,92 @@ ptsList =
         Vertex3 (-0.4) (-0.1) 0
       ]
 
+
+{-|
+ 
+    NOTE: q0 q1 q3 should be in CW
+
+                                 
+                                 q0
+                                /  \ 
+                           |   /    \
+                           |  /      \
+                           | /        \
+                          q2 ---------- q1
+
+                              v10 x v12
+
+
+ -}
+perpPlaneX::(Fractional a, Eq a)=> Vertex3 a -> (Vertex3 a, Vertex3 a, Vertex3 a) -> Vertex3 a
+perpPlaneX p0@(Vertex3 e0 e1 e2) (q0@(Vertex3 m0 m1 m2), q1@(Vertex3 k0 k1 k2), q2@(Vertex3 d0 d1 d2)) = vx 
+  where       
+    v10 = q1 -: q0
+    v12 = q1 -: q2
+    vp = v10 `cross` v12
+    v00 = q0 -: p0
+    v_vp = case vp of
+              Just v -> projv v00 v 
+              Nothing -> error "ERROR: cross product"
+    vx = q0 +: (v00 + (-v_vp))
+
+projvX :: (Fractional a, Eq a) => Vector3 a -> Vector3 a -> Vector3 a
+projvX u v = w'
+  where
+    u' = veMat u
+    v' = veMat v
+    w  = projnX u' v'
+    w' = matVe w
+
+
+
+{-|
+ 
+  @ 
+  <u, v>
+  ------  v = proj_uv
+  <v, v>
+  @
+ -}
+projnX:: (Fractional a, Eq a)=>[[a]]->[[a]]->[[a]]
+projnX u v = c `mu` v
+  where
+   dot w k = (sum . join) $ (zipWith . zipWith) (*) w k
+   d      = dot u v
+   c      = d/(dot v v)
+   mu a w = (map . map)(*a) w
+
+
+drawArrowProj :: [(Vertex3 GLfloat, Vertex3 GLfloat)] -> (Bool, Bool, Bool) -> IO()
+drawArrowProj ls (xy, yz, zx) = do
+    preservingMatrix $ do
+      let cc = [green, blue, cyan, magenta, yellow]
+      let xzp = (Vertex3 0.0 0.0 0.0, Vertex3 1 0 0, Vertex3 0 0 (-1))
+      let xyp = (Vertex3 0.0 0.0 0.0, Vertex3 1 0 0, Vertex3 0 1 0)
+      let yzp = (Vertex3 0.0 0.0 0.0, Vertex3 0 1 0, Vertex3 0 0 (-1))
+      mapM_ (\t -> do 
+                   drawArrow3d t cc
+                   when zx $ do
+                     let vx = perpPlaneX (snd t) xzp 
+                     drawArrow3d (fst t, vx) [colorChange 0.4 gray]
+                   when xy $ do
+                     let xy = perpPlaneX (snd t) xyp 
+                     drawArrow3d (fst t, xy) [colorChange 0.3 white]
+                   when yz $ do
+                     let yz = perpPlaneX (snd t) yzp 
+                     drawArrow3d (fst t, yz) [colorChange 0.2 gray, white]
+            ) ls 
+
+
+intersectLineTri :: (Floating a, Eq a) => (Vertex3 a, Vertex3 a) -> (Vertex3 a, Vertex3 a, Vertex3 a) -> a 
+intersectLineTri (p0, p1) q@(q0, q1, q2) = ang 
+  where
+   p0' = perpPlaneX p0 q 
+   p1' = perpPlaneX p1 q
+   v01  = p0 -: p1
+   v01' = p0' -: p1'  
+   ang = angle2Vector v01 v01'
+
 mainLoop ::
   (G.Window, G.Window) ->
   IORef CameraRot ->
@@ -230,7 +317,21 @@ mainLoop (w2d, w3d) refCamRot refGlobal refGlobalFrame animaStateArr lssVex ioAr
   rotateWorldX refCamRot
 
 
+  when False $ do
+    preservingMatrix $ do
+      let cc = [green, blue, cyan, magenta, yellow]
+      drawArrow3dCen (Vector3 0.2 0.2 0.2) cc 
+
+  when False $ do
+    ls <- rfl "./bb.x" >>= \cx -> return $ map (\x -> read x :: (Vertex3 GLfloat, Vertex3 GLfloat)) cx
+    drawArrowProj ls (True, False, False)
+
   when True $ do
+    let cc = [green, blue, cyan, magenta, yellow]
+    ls <- rfl "./cc.x" >>= \cx -> return $ map (\x -> read x :: (Vertex3 GLfloat, Vertex3 GLfloat)) cx
+    mapM_ (\t -> drawArrow3d t cc) ls
+
+  when False $ do
     preservingMatrix $ do
       let cc = [green, blue, cyan, magenta, yellow]
       GL.scale (1:: GL.GLdouble) 2.0 1
@@ -261,19 +362,20 @@ mainLoop (w2d, w3d) refCamRot refGlobal refGlobalFrame animaStateArr lssVex ioAr
   preservingMatrix $ do
     renderCoordinates
 
-  preservingMatrix $ do
-    let ax = map (\x -> Vertex3 (0.2 * x) 0.3 0) [0..3]
-    let bx = map (\x -> Vertex3 (0.2 * x) 0.7 0) [0..3]
-    mapM_ (drawSegmentFromTo yellow) [ax, bx]
-    let g a b = let h x y = zipWith (\a b -> [a, b]) x y
-                in join $ h a b
-    let zm = join $ zipWith(\a b -> [a, b]) ax bx
-    let zm' = zip [yellow, white, green, blue, cyan, red, colorChange 0.5 yellow, colorChange 0.5 cyan] zm
-    let ls = [Vertex3 0 0 0] :: [Vertex3 GLfloat]    
-    renderPrimitive TriangleStrip $ mapM_ (\(c, v) -> do
-                                          color c
-                                          vertex v
-                                        ) zm'
+  when False $ do
+    preservingMatrix $ do
+      let ax = map (\x -> Vertex3 (0.2 * x) 0.3 0) [0..3]
+      let bx = map (\x -> Vertex3 (0.2 * x) 0.7 0) [0..3]
+      mapM_ (drawSegmentFromTo yellow) [ax, bx]
+      let g a b = let h x y = zipWith (\a b -> [a, b]) x y
+                  in join $ h a b
+      let zm = join $ zipWith(\a b -> [a, b]) ax bx
+      let zm' = zip [yellow, white, green, blue, cyan, red, colorChange 0.5 yellow, colorChange 0.5 cyan] zm
+      let ls = [Vertex3 0 0 0] :: [Vertex3 GLfloat]    
+      renderPrimitive TriangleStrip $ mapM_ (\(c, v) -> do
+                                            color c
+                                            vertex v
+                                          ) zm'
 
   curStr <- getStr refGlobal
   show3dStr curStr red 0.8

@@ -2462,6 +2462,30 @@ drawArrowXX (p0, p1) = do
       v = p0 -: p1
       l = nr v 
 
+drawArrow3dCen ::Vector3 GLfloat -> [Color3 GLdouble] -> IO()
+drawArrow3dCen v cl = do
+  preservingMatrix $ do
+    let v0 = Vector3 1 0 0
+    let v1 = v
+    let m = padMat3To4 $ rotToVecMat v0 v 
+    multiModelviewMat $ join m
+    cylinderArrow (nr v) cl
+
+drawArrow3d ::(Vertex3 GLfloat, Vertex3 GLfloat) -> [Color3 GLdouble] -> IO()
+drawArrow3d (p0, p1) cl = do
+  preservingMatrix $ do
+    let v = p0 ➞ p1  -- vector from p0 to p1
+    let v0 = Vector3 1 0 0
+    let m = padMat3To4 $ rotToVecMat v0 v 
+    translate (vec_ p0)
+    multiModelviewMat $ join m
+    cylinderArrow (nr v) cl
+  where
+    (➞) :: (Floating a) => Vertex3 a -> Vertex3 a -> Vector3 a
+    (➞) (Vertex3 x y z) (Vertex3 x' y' z') = Vector3 (x' - x) (y' - y) (z' - z) 
+    --HEAVY TRIANGLE-HEADED RIGHTWARDS ARROW
+    --Unicode: U+279E, UTF-8: E2 9E 9E
+
 drawArrowColor :: (Vertex3 GLfloat, Vertex3 GLfloat) -> [Color3 GLdouble] -> IO()
 drawArrowColor (p0, p1) cr = do 
   let v = p0 -: p1

@@ -171,6 +171,8 @@ dot3vx (Vertex3 x0 y0 z0) (Vertex3 x1 y1 z1) = x0*x1 + y0*y1 + z0*z1
 {-|
     === KEY: add vertex to vector, vector to vertex, translate vectex to other vectex, affine transform
 
+    NOTE: Points and Vectors in afine space
+
     0 + vector      => vector
     vextex + vector => vextex
     vextex - vectex => vector
@@ -781,6 +783,9 @@ isPerpen v1 v2 =  v1 ⊙ v2 == 0
     * If two points or three points are overlapped, then they are still colinear
     * It's only for 2D plan, Vertex3 x y z ⇒ Vertex3 x y 0
 
+    NOTE: deprecated, bad name
+    USE: 'isColinear2d'
+
     @
     f(t) = p0 + t(p1 - p0)
     f(s) = p0 + s(p2 - p0)
@@ -803,7 +808,9 @@ isColinear (Vertex3 x0 y0 z0) (Vertex3 x1 y1 z1) (Vertex3 x2 y2 z2) = det == 0
   NOTE: use 'isColinear2d',  ∵ better name
 -}
 isColinear2d::(Num a, Eq a) => Vertex3 a ->Vertex3 a ->Vertex3 a -> Bool
-isColinear2d = isColinear
+isColinear2d (Vertex3 x0 y0 z0) (Vertex3 x1 y1 z1) (Vertex3 x2 y2 z2) = det == 0
+                where
+                    det = (x1 - x0)*(y2 - y0) - (x2 - x0)*(y1 - y0)
 
   
 {-|
@@ -1686,8 +1693,19 @@ circleNX (Vertex3 x0 y0 z0) r num =[let alpha = pi2*(rf n)/rf num in Vertex3 (rf
         where
             pi2 = 2*pi::Float
 
-vec_ :: (Floating a) => (Vertex3 a) -> Vector3 a
+{-|
+    === KEY: Vector3 to Vertex3 
+-}
+vec_ :: (Fractional a, Eq a) => (Vertex3 a) -> Vector3 a
+-- vec_ :: (Floating a) => (Vertex3 a) -> Vector3 a
 vec_ (Vertex3 x y z) = Vector3 x y z 
+
+{-|
+    === KEY: Vertex3 to Vector3
+-}
+ver_ :: (Fractional a, Eq a) => (Vector3 a) -> Vertex3 a
+ver_ (Vector3 x y z) = Vertex3 x y z 
+
 
 {-|
     === Draw xy-plane circle with 10 segments
@@ -3271,7 +3289,7 @@ ptOnLeftLine p0@(Vertex3 x0 y0 z0)
 --
 
 {-|
-  === KEY: Check whether a point \(p_0\) is inside a triangle \( \triangle ABC \), point inside triangle
+  === KEY: Check whether a point \(p_0\) is inside a triangle \( \triangle ABC \), point is inside triangle
 
   * is a point inside a triangle
   * __NOTE__ the order of three pts: \(A, B, C\) does't matter. e.g CCW or CW
@@ -3298,14 +3316,33 @@ ptOnLeftLine p0@(Vertex3 x0 y0 z0)
   TODO: how to check whether a pt is inside a n-polygon 'ptInsidePolygon'
   <http://localhost/html/indexConvexHullAlgorithm.html#npolygon N-Polygon>
 
+  DATE: Tue 12 Mar 01:01:02 2024 
+  FIX: fixed a serious bug when two different types are mixed
+  NOTE: Floating a => Vertex3 a and Vertex3 GLfloat 
+
 -}
+ptInsideTri::(Floating a, Ord a) => Vertex3 a -> (Vertex3 a, Vertex3 a, Vertex3 a) -> (Bool, a)
+ptInsideTri p0 (a, b, c) = (notSame && isOK, isOK ? rad $ -1)
+           where
+             notSame = not $ p0 `elem` [a, b, c]
+             v10 = p0 -: a 
+             v12 = p0 -: b 
+             d = dot3ve v10 v12
+             n1 = nr v10
+             n2 = nr v12
+             rad= (cosVex3 b p0 a) + (cosVex3 c p0 b) + (cosVex3 c p0 a)
+             isOK = abs(rad - 2*pi) < 0.000001
+{--
 ptInsideTri::Vertex3 GLfloat -> (Vertex3 GLfloat, Vertex3 GLfloat, Vertex3 GLfloat) -> (Bool, GLfloat)
 ptInsideTri p0 (a, b, c) = (notSame && is, notSame ? rad $ 0.0)
                            where
                              notSame = not $ p0 `elem` [a, b, c]
                              rad= (cosVex3 b p0 a) + (cosVex3 c p0 b) + (cosVex3 c p0 a)
-                             is = abs(rad - 2*pi) < 0.001
+                             is = abs(rad - 2*pi) < 0.000001
   
+--}
+
+
 
 {-|
     === KEY: same as 'ptInsideTri' is a point inside a triangle
@@ -3326,13 +3363,17 @@ isPtInsideTriList p0 [a, b, c] = ptInsideTri p0 (a, b, c)
   
 
 {-|
-Given a point p0 and three pts: q0, q1, q2,
+ - KEY: distance to plane, pt to plane, point to three points
+ -
+  Given a point p0 and three pts: q0, q1, q2,
 
-Compute the intersection of line is perpendicular to the plane and passes point p0
+  Compute the intersection of line is perpendicular to the plane and passes point p0
 
-If three pts (q0, q1, q2) are colinear, return Nothing
+  If three pts (q0, q1, q2) are colinear, return Nothing
 
-otherwise, return Just (Vertex3 GLfloat)
+  otherwise, return Just (Vertex3 GLfloat)
+
+  NOTE: the function does not work in 3d
 -}
 perpPlane::(Vertex3 GLfloat) ->
            (Vertex3 GLfloat) ->
@@ -4054,14 +4095,15 @@ rod u v θ = tv
     \]
 
 -}
-cosVex3::Vertex3 GLfloat -> Vertex3 GLfloat -> Vertex3 GLfloat -> GLfloat
+-- cosVex3::(Fractional a) => Vertex3 a -> Vertex3 a -> Vertex3 a -> a 
+cosVex3::(Floating a) => Vertex3 a -> Vertex3 a -> Vertex3 a -> a 
 cosVex3 p0 p1 p2 = acos $ d/(n1*n2)
-                    where
-                        v10 = p0 -: p1
-                        v12 = p2 -: p1
-                        d = dot3ve v10 v12
-                        n1 = nr v10
-                        n2 = nr v12
+                where
+                    v10 = p1 -: p0
+                    v12 = p1 -: p2
+                    d = dot3ve v10 v12
+                    n1 = nr v10
+                    n2 = nr v12
 
 {-|
     === Compute an angle from three points: \(a, b, c \) with dot product
