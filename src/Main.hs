@@ -133,13 +133,14 @@ mymain = do
   G.windowHint (G.WindowHint'DoubleBuffer True)
   -- if init failed, we exit the program
   bool successfulInit exitFailure $ do
-    mw3d <- G.createWindow 1000 1000 "PlotGeometry 3D" Nothing Nothing
     mw2d <- G.createWindow 1000 1000 "PlotGeometry 2D" Nothing Nothing
+    mw3d <- G.createWindow 1000 1000 "PlotGeometry 3D" Nothing Nothing
     -- maybe' :: Maybe a -> b -> (a -> b) -> b  
     -- maybe' mw (G.terminate >> exitFailure) $ \window -> do
     maybeX' (mw3d, mw2d) (G.terminate >> exitFailure)  $ \(window3d, window2d) -> do      
       -- ref <- newIORef initCam
-      refCamRot <- newIORef initCameraRot
+      refCamRot3d <- newIORef initCameraRot
+      refCamRot2d <- newIORef initCameraRot
       refStep <- newIORef initStep
       refGlobal <- newIORef initGlobal
       globalRef <- readIORef refGlobal
@@ -172,7 +173,7 @@ mymain = do
       -- mymain
       -- thead 1
       -- G.makeContextCurrent mw0
-      mainLoop (window3d, window2d) refCamRot refGlobal refFrame animaStateArr cx' ioArray
+      mainLoop (window3d, window2d) (refCamRot3d, refCamRot2d) refGlobal refFrame animaStateArr cx' ioArray
 
       G.destroyWindow window3d
       G.destroyWindow window2d
@@ -296,7 +297,7 @@ intersectLineTri (p0, p1) q@(q0, q1, q2) = ang
 
 mainLoop ::
   (G.Window, G.Window) ->
-  IORef CameraRot ->
+  (IORef CameraRot, IORef CameraRot) ->
   -- IORef Step ->
   IORef GlobalRef ->
   IORef FrameCount ->
@@ -304,18 +305,17 @@ mainLoop ::
   [[Vertex3 GLfloat]] ->
   DAO.IOArray (Int, Int, Int) BlockAttr ->
   IO ()
-mainLoop (w2d, w3d) refCamRot refGlobal refGlobalFrame animaStateArr lssVex ioArray = unlessX' (G.windowShouldClose w2d) (G.windowShouldClose w3d) $ do
+mainLoop (w3d, w2d) (refCamRot3d, refCamRot2d) refGlobal refGlobalFrame animaStateArr lssVex ioArray = unlessX' (G.windowShouldClose w3d) (G.windowShouldClose w2d) $ do
 
-  G.getWindowFocused w2d >>= \b -> when b $ G.setKeyCallback w2d (Just $ keyBoardCallBack2d refCamRot refGlobal ioArray)
-  G.getWindowFocused w3d >>= \b -> when b $ G.setKeyCallback w3d (Just $ keyBoardCallBack3d refCamRot refGlobal ioArray)
-  G.getWindowFocused w2d >>= \b -> when b $ G.setMouseButtonCallback w2d (Just $ mouseCallbackX refGlobal) 
+  G.getWindowFocused w3d >>= \b -> when b $ G.setKeyCallback w3d (Just $ keyBoardCallBack3d refCamRot3d refGlobal ioArray)
+  G.getWindowFocused w2d >>= \b -> when b $ G.setKeyCallback w2d (Just $ keyBoardCallBack2d refCamRot2d refGlobal ioArray)
   G.getWindowFocused w3d >>= \b -> when b $ G.setMouseButtonCallback w3d (Just $ mouseCallbackX refGlobal)
+  G.getWindowFocused w2d >>= \b -> when b $ G.setMouseButtonCallback w2d (Just $ mouseCallbackX refGlobal) 
 
-  beginWindow3d w3d refCamRot refGlobal ioArray
+  beginWindow3d w3d refCamRot3d refGlobal ioArray
   
 -- /Users/aaa/myfile/bitbucket/tmp/xx_9059.x
-  rotateWorldX refCamRot
-
+  rotateWorldX refCamRot3d
 
   when False $ do
     preservingMatrix $ do
@@ -422,21 +422,8 @@ mainLoop (w2d, w3d) refCamRot refGlobal refGlobalFrame animaStateArr lssVex ioAr
   showCurrBoardArr ioArray
   drawRectGridX initRectGrid
   -- G.swapBuffers w
-
   endWindow3d w3d
-{--
- 
-   a b c
-   init a b
-   tail b c
 
-   a -> b
-   b -> c
-
---} 
-
-  -- xx1
-  -- window 1
   beginWindow2d w2d
   when True $ do
     -- let pts = ptsList 
@@ -536,7 +523,6 @@ mainLoop (w2d, w3d) refCamRot refGlobal refGlobalFrame animaStateArr lssVex ioAr
       let cc = [cyan, magenta, yellow]
       drawArrowX (Vertex3 0.1 0.1 0, Vertex3 (-0.3) 0.5 0)    
 
-
   when False $ do
     let width = 0.3
     let height = 0.2
@@ -576,8 +562,8 @@ mainLoop (w2d, w3d) refCamRot refGlobal refGlobalFrame animaStateArr lssVex ioAr
       writeAnimaState animaStateArr animaState1
 
   drawDot (Vertex3 0 0 0)
-
   endWindow2d w2d
+
   -- saveImageFrame w animaStateArr
 
   -- saveImageOpenGL w "/tmp/img0.png"
@@ -589,7 +575,7 @@ mainLoop (w2d, w3d) refCamRot refGlobal refGlobalFrame animaStateArr lssVex ioAr
   -- G.swapBuffers w
 
   -- G.pollEvents
-  mainLoop (w2d, w3d) refCamRot refGlobal refGlobalFrame animaStateArr lssVex ioArray
+  mainLoop (w3d, w2d) (refCamRot3d, refCamRot2d) refGlobal refGlobalFrame animaStateArr lssVex ioArray
 
 main = do
   argList <- getArgs

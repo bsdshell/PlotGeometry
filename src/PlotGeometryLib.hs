@@ -575,8 +575,15 @@ maybeX' (m1, m2) b f = case m1 of
   Nothing -> error "e1"
   Just x1 -> case m2 of
              Nothing -> error "e2"
-             Just x2 -> f (x1, x2)
+             Just x2  -> f (x1, x2)
   
+
+
+unlessX' :: Monad m => m Bool -> m Bool -> m () -> m ()
+unlessX' action1 action2 falseAction = do
+  b1 <- action1
+  b2 <- action2
+  unless (b1 || b2) falseAction
 
 -- |
 --    KEY: convert 'String' to 'Vertex3' 'GLfloat'
@@ -1034,8 +1041,8 @@ let r = MyRec = {a_ = 3, b_ = a_ + 4}
 --}
 
 -- DONOTDELETE: /Users/aaa/myfile/github/haskell-opengl-tetris/src/keyBoardCallBack3d-2024-01-19-11-19-06.x
-keyBoardCallBack3d :: IORef CameraRot -> IORef GlobalRef -> IOArray (Int, Int, Int) BlockAttr -> G.KeyCallback
-keyBoardCallBack3d refCamRot refGlobalRef ioArray window key scanCode keyState modKeys = do
+keyBoardCallBack2d :: IORef CameraRot -> IORef GlobalRef -> IOArray (Int, Int, Int) BlockAttr -> G.KeyCallback
+keyBoardCallBack2d refCamRot refGlobalRef ioArray window key scanCode keyState modKeys = do
   pp "keyBoardCallBack in $b/haskelllib/AronOpenGL.hs"
   putStrLn $ "inside =>" ++ show keyState ++ " " ++ show key
   globalRef <- readIORef refGlobalRef
@@ -1166,8 +1173,8 @@ keyBoardCallBack3d refCamRot refGlobalRef ioArray window key scanCode keyState m
     (key == G.Key'Escape && keyState == G.KeyState'Pressed)
     (G.setWindowShouldClose window True)
 
-keyBoardCallBack2d :: IORef CameraRot -> IORef GlobalRef -> IOArray (Int, Int, Int) BlockAttr -> G.KeyCallback
-keyBoardCallBack2d refCamRot refGlobalRef ioArray window key scanCode keyState modKeys = do
+keyBoardCallBack3d :: IORef CameraRot -> IORef GlobalRef -> IOArray (Int, Int, Int) BlockAttr -> G.KeyCallback
+keyBoardCallBack3d refCamRot refGlobalRef ioArray window key scanCode keyState modKeys = do
   pp "keyBoardCallBack in $b/haskelllib/AronOpenGL.hs"
   putStrLn $ "inside =>" ++ show keyState ++ " " ++ show key
   globalRef <- readIORef refGlobalRef
@@ -2926,30 +2933,27 @@ mulMat cx vx = v0
     v0 = listToVex $ join $ cx `multiVec` ls
 
 beginWindow3d :: G.Window -> IORef CameraRot -> IORef GlobalRef -> IOArray (Int, Int, Int) BlockAttr -> IO()
-beginWindow3d w3d refCamRot refGlobal ioArray = do
-  (width, height) <- G.getFramebufferSize w3d
+beginWindow3d w refCamRot refGlobal ioArray = do
+  G.makeContextCurrent $ Just w
+  (width, height) <- G.getFramebufferSize w 
   viewport $= (Position 0 0, Size (fromIntegral width) (fromIntegral height))
   GL.clear [ColorBuffer, DepthBuffer]
   GL.depthFunc $= Just Lequal
-  G.getWindowFocused w3d >>= \b -> when b $ G.setKeyCallback w3d (Just $ keyBoardCallBack2d refCamRot refGlobal ioArray)
-  G.getWindowFocused w3d >>= \b -> when b $ G.setMouseButtonCallback w3d (Just $ mouseCallbackX refGlobal)
   loadIdentity
-  
   fov <- readIORef refCamRot <&> persp_ <&> fov_
   zf <- readIORef refCamRot <&> persp_ <&> zf_
   zn <- readIORef refCamRot <&> persp_ <&> zn_
   eye <- readIORef refCamRot <&> modelview_ <&> eye_
   matrixMode $= Projection
   loadIdentity
-
   perspective fov 1.0 zn zf
-
   matrixMode $= Modelview 0
   loadIdentity
   GL.lookAt eye (Vertex3 0 0 0 :: Vertex3 GLdouble) (Vector3 0 1 0 :: Vector3 GLdouble)
   
 beginWindow2d :: G.Window -> IO()
 beginWindow2d w = do
+  G.makeContextCurrent $ Just w
   GL.clear [ColorBuffer, DepthBuffer]
   (width, height) <- G.getFramebufferSize w
   viewport $= (Position 0 0, Size (fromIntegral width) (fromIntegral height))
@@ -2960,19 +2964,19 @@ beginWindow2d w = do
   matrixMode $= Modelview 0
   loadIdentity  
 
+endWindow3d :: G.Window -> IO()
+endWindow3d w = do
+  -- G.makeContextCurrent $ Just w
+  G.swapBuffers w
+  G.pollEvents
+
 endWindow2d :: G.Window -> IO()
 endWindow2d w = do
-  G.makeContextCurrent $ Just w
+  -- G.makeContextCurrent $ Just w
   G.swapBuffers w
   G.pollEvents
   
-endWindow3d :: G.Window -> IO()
-endWindow3d w = do
-  G.makeContextCurrent $ Just w
-  G.swapBuffers w
-  G.pollEvents
     
-
 saveImageFrame :: G.Window -> IOArray Int AnimaState -> IO()
 saveImageFrame w animaStateArr = do
   let anima1 = 1

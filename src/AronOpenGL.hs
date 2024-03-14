@@ -573,12 +573,14 @@ unless' action falseAction = do
   b <- action
   unless b falseAction
   
+{--
 unlessX' :: Monad m => m Bool -> m Bool -> m () -> m ()
 unlessX' action1 action2 falseAction = do
   b1 <- action1
   b2 <- action2
   unless (b1 || b2) falseAction
-  
+--}  
+
 maybe' :: Maybe a -> b -> (a -> b) -> b
 maybe' m nothingRes f = case m of
   Nothing -> nothingRes
