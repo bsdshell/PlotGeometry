@@ -1184,6 +1184,7 @@ keyBoardCallBack3d refCamRot refGlobalRef ioArray window key scanCode keyState m
   logFileG ["fovOld=" ++ show fovOld]
   rr <- readIORef refGlobalRef <&> rectGrid_
   coordFrame <- readIORef refCamRot <&> coordFrame_
+  rotSpeed <- readIORef refCamRot <&> rotSpeed_
   case keyState of
     ks
       | ks `elem` [G.KeyState'Pressed, G.KeyState'Repeating] -> do
@@ -1195,12 +1196,14 @@ keyBoardCallBack3d refCamRot refGlobalRef ioArray window key scanCode keyState m
                 currXYZ <- readIORef refCamRot <&> currXYZ_
                 case currXYZ of
                    v | v == 1 -> do
-                         modifyIORef refCamRot (\s -> s{alpha_ = alpha_ s + _STEP})
-                         alpha <- readIORef refCamRot <&> alpha_
+
+--                         modifyIORef refCamRot (\s -> s{alpha_ = alpha_ s + _STEP})
+--                         alpha <- readIORef refCamRot <&> alpha_
+
                          let vecXCF = coordFrame ^._1
                          let vecYCF = coordFrame ^._2
                          let vecZCF = coordFrame ^._3
-                         let (mm, ls) = rotMat4Tup vecXCF (rf $ (pi/180) * _STEP)
+                         let (mm, ls) = rotMat4Tup vecXCF (rf $ (pi/180) * rotSpeed)
                          -- multiModelviewMat ls
                          let lsY = vecToList3 vecYCF ++ [0]
                          let lsZ = vecToList3 vecZCF ++ [0]
@@ -1213,7 +1216,6 @@ keyBoardCallBack3d refCamRot refGlobalRef ioArray window key scanCode keyState m
                          logFileG ["mm_matrix"]
                          logFileG [mm']
 
-                         logFileG ["alpha=" ++ show alpha]
                          logFileG ["vecXCF"]
                          logFileG [show vecXCF]  
                          logFileG ["n=1 vecvy3"]
@@ -1225,11 +1227,12 @@ keyBoardCallBack3d refCamRot refGlobalRef ioArray window key scanCode keyState m
                          logFileG $ map show lsZ
   
                      | v == 2 -> do
-                         modifyIORef refCamRot (\s -> s{beta_ = beta_ s + _STEP})
+--                         modifyIORef refCamRot (\s -> s{beta_ = beta_ s + _STEP})
+
                          let vecXCF = coordFrame ^._1
                          let vecYCF = coordFrame ^._2
                          let vecZCF = coordFrame ^._3
-                         let (mm, ls) = rotMat4Tup vecYCF (rf $ (pi/180) * _STEP)
+                         let (mm, ls) = rotMat4Tup vecYCF (rf $ (pi/180) * rotSpeed)
                          -- multiModelviewMat ls
                          let lsX = vecToList3 vecXCF ++ [0]
                          let lsZ = vecToList3 vecZCF ++ [0]
@@ -1245,7 +1248,7 @@ keyBoardCallBack3d refCamRot refGlobalRef ioArray window key scanCode keyState m
                          let vecXCF = coordFrame ^._1
                          let vecYCF = coordFrame ^._2
                          let vecZCF = coordFrame ^._3
-                         let (mm, ls) = rotMat4Tup vecZCF (rf $ (pi/180) * _STEP)
+                         let (mm, ls) = rotMat4Tup vecZCF (rf $ (pi/180) * rotSpeed)
                          let lsX = vecToList3 vecXCF ++ [0]
                          let lsY = vecToList3 vecYCF ++ [0]
                          let vx3 = (listToVec . join) $ mm `multiVec` lsX
@@ -1264,11 +1267,11 @@ keyBoardCallBack3d refCamRot refGlobalRef ioArray window key scanCode keyState m
                 currXYZ <- readIORef refCamRot <&> currXYZ_
                 case currXYZ of
                    v | v == 1 -> do
-                         modifyIORef refCamRot (\s -> s{alpha_ = alpha_ s - _STEP})
+--                         modifyIORef refCamRot (\s -> s{alpha_ = alpha_ s - _STEP})
                          let vecXCF = coordFrame ^._1
                          let vecYCF = coordFrame ^._2
                          let vecZCF = coordFrame ^._3
-                         let (mm, ls) = rotMat4Tup vecXCF (rf $ (pi/180) * negate _STEP)
+                         let (mm, ls) = rotMat4Tup vecXCF (rf $ (pi/180) * negate rotSpeed)
                          let lsY = vecToList3 vecYCF ++ [0]
                          let lsZ = vecToList3 vecZCF ++ [0]
                          let vy3 = (listToVec . join) $ mm `multiVec` lsY
@@ -1278,11 +1281,11 @@ keyBoardCallBack3d refCamRot refGlobalRef ioArray window key scanCode keyState m
                          modifyIORef refCamRot (\s -> s{coordFrame_ = (vecXCF, vy3, vz3)})
 
                      | v == 2 -> do
-                         modifyIORef refCamRot (\s -> s{beta_ = beta_ s - _STEP})
+--                         modifyIORef refCamRot (\s -> s{beta_ = beta_ s - _STEP})
                          let vecXCF = coordFrame ^._1
                          let vecYCF = coordFrame ^._2
                          let vecZCF = coordFrame ^._3
-                         let (mm, ls) = rotMat4Tup vecYCF (rf $ (pi/180) * negate _STEP)
+                         let (mm, ls) = rotMat4Tup vecYCF (rf $ (pi/180) * negate rotSpeed)
                          let lsX = vecToList3 vecXCF ++ [0]
                          let lsZ = vecToList3 vecZCF ++ [0]
                          let vx3 = (listToVec . join) $ mm `multiVec` lsX
@@ -1295,7 +1298,7 @@ keyBoardCallBack3d refCamRot refGlobalRef ioArray window key scanCode keyState m
                          let vecXCF = coordFrame ^._1
                          let vecYCF = coordFrame ^._2
                          let vecZCF = coordFrame ^._3
-                         let (mm, ls) = rotMat4Tup vecZCF (rf $ (pi/180) * negate _STEP)
+                         let (mm, ls) = rotMat4Tup vecZCF (rf $ (pi/180) * negate rotSpeed)
                          let lsX = vecToList3 vecXCF ++ [0]
                          let lsY = vecToList3 vecYCF ++ [0]
                          let vx3 = (listToVec . join) $ mm `multiVec` lsX

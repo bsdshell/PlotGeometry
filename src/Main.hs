@@ -209,7 +209,7 @@ ptsList =
         Vertex3 (-0.4) (-0.1) 0
       ]
 
-
+{--
 {-|
  
     NOTE: q0 q1 q3 should be in CW
@@ -237,6 +237,7 @@ perpPlaneX p0@(Vertex3 e0 e1 e2) (q0@(Vertex3 m0 m1 m2), q1@(Vertex3 k0 k1 k2), 
               Just v -> projv v00 v 
               Nothing -> error "ERROR: cross product"
     vx = q0 +: (v00 + (-v_vp))
+--}
 
 projvX :: (Fractional a, Eq a) => Vector3 a -> Vector3 a -> Vector3 a
 projvX u v = w'
@@ -285,15 +286,58 @@ drawArrowProj ls (xy, yz, zx) = do
                      drawArrow3d (fst t, yz) [colorChange 0.2 gray, white]
             ) ls 
 
-
-intersectLineTri :: (Floating a, Eq a) => (Vertex3 a, Vertex3 a) -> (Vertex3 a, Vertex3 a, Vertex3 a) -> a 
-intersectLineTri (p0, p1) q@(q0, q1, q2) = ang 
+{--
+intersectLineTri :: (Floating a, Ord a) => (Vertex3 a, Vertex3 a) -> (Vertex3 a, Vertex3 a, Vertex3 a) -> Maybe (Vertex3 a)
+intersectLineTri (p0, p1) q@(q0, q1, q2) = isPerp || isPara ? Nothing $ Just vx 
   where
+   epsilon = 0.000001
+   vPerp = crossF (q1 -: q0) (q1 -: q2)
+   isPerp = case vPerp of 
+              Just v -> False 
+              Nothing -> True 
+   -- is line parallel to the plane q
    p0' = perpPlaneX p0 q 
    p1' = perpPlaneX p1 q
    v01  = p0 -: p1
    v01' = p0' -: p1'  
    ang = angle2Vector v01 v01'
+   h0 = nr $ p0 -: p0' 
+   h1 = nr $ p1 -: p1' 
+   isPara = abs (h0 - h1) < epsilon
+   vx | h0 > h1 = let u = uv v01' 
+                      x = h0/(tan ang)
+                  in p0' +: (x *: u)
+      | otherwise = let u = uv $ (- v01') 
+                        x = h1/(tan ang)
+                    in p1' +: (x *: u)
+--}
+
+{--
+drawSphereNX_1::Int -> GLfloat ->Int -> Bool -> [Color3 GLdouble] -> (GLfloat -> GLfloat)-> IO()
+drawSphereNX_1 n radius k isFilled cc f = do
+    let δ = 2*pi / rf n :: GLfloat
+        ϵ = pi / rf n :: GLfloat
+        r = radius
+        fx::Int -> Int -> GLfloat
+        fx i j = let i' = rf i
+                     j' = rf j
+                     α  = δ * i'
+                     β  = ϵ * j'
+                 in r * cos β * f α
+        fy::Int -> Int -> GLfloat
+        fy i j = let i' = rf i
+                     j' = rf j
+                     α  = δ * i'
+                     β  = ϵ * j'
+                 in r * sin α
+        fz::Int -> Int -> GLfloat
+        fz i j = let i' = rf i
+                     j' = rf j
+                     α  = δ * i'
+                     β  = ϵ * j'
+                 in r * cos α * sin β
+        in drawParamSphereX fx fy fz n k isFilled cc
+--}
 
 mainLoop ::
   (G.Window, G.Window) ->
@@ -326,7 +370,30 @@ mainLoop (w3d, w2d) (refCamRot3d, refCamRot2d) refGlobal refGlobalFrame animaSta
     ls <- rfl "./bb.x" >>= \cx -> return $ map (\x -> read x :: (Vertex3 GLfloat, Vertex3 GLfloat)) cx
     drawArrowProj ls (True, False, False)
 
-  when True $ do
+  when False $ do
+    let cc = [green, blue, cyan, magenta, yellow]
+    let p0 = Vertex3 0.2 0.2    (-0.2)
+    let p1 = Vertex3 0.1 (-0.1) (-0.3)
+
+    let q0 = Vertex3 0.0 0.0 0.0
+    let q1 = Vertex3 0.7 0.01 0.0
+    let q2 = Vertex3 0.02 0 (-0.6)
+    let ls = [(q0, p0), (q0, p1), (p0, p1), (q0, q1), (q0, q2)]
+
+    let t = (q0, q1, q2)
+    let vx = intersectLineTri (p0, p1) t
+    case vx of
+      Just px ->  do 
+        pp "ok"
+        -- drawCubeQuadX (p0 -: px) 0.01
+      Nothing -> pp "do not intersect line and plane"
+    renderPrimitive TriangleStrip $ mapM_ (\(c, v) -> do
+                                          color c
+                                          vertex v
+                                        ) $ zip cc [q0, q1, q2] 
+    mapM_ (\t -> drawArrow3d t cc) ls
+
+  when False $ do
     let cc = [green, blue, cyan, magenta, yellow]
     ls <- rfl "./cc.x" >>= \cx -> return $ map (\x -> read x :: (Vertex3 GLfloat, Vertex3 GLfloat)) cx
     mapM_ (\t -> drawArrow3d t cc) ls
@@ -336,6 +403,21 @@ mainLoop (w3d, w2d) (refCamRot3d, refCamRot2d) refGlobal refGlobalFrame animaSta
       let cc = [green, blue, cyan, magenta, yellow]
       GL.scale (1:: GL.GLdouble) 2.0 1
       drawTorusX 0.1 0.2 20 cc
+
+  when True $ do
+    preservingMatrix $ do
+      mapM_ (\x -> do
+        let cc = [green, blue, cyan, magenta, yellow]
+        -- let cc = [gray, white]
+        let isFilled = False 
+        -- translate (Vector3 (0.2 * x) 0 0 :: Vector3 GLdouble)
+        -- drawSphereN 10 0.4 cc
+        drawSphereNX 40 0.4 30 isFilled cc
+        -- mapM_ (\f -> drawSphereNX_1 10 0.4 1 isFilled cc f) [sin, cos, tan, f, g]
+            ) [1]
+
+  when True $ do
+    drawParaboloid
 
   when False $ do
     preservingMatrix $ do 
@@ -400,24 +482,23 @@ mainLoop (w3d, w2d) (refCamRot3d, refCamRot2d) refGlobal refGlobalFrame animaSta
     drawAxis (Vector3 0 0 1) [blue, fmap (*05) blue]
     drawCubeQuad 0.02
 
-    -- θ <- readAndParse "/tmp/aa.x"
-    conn <- redisConnectDefault
-    -- s  <- redisGetConn conn "kk0"
-    θ <- redisGetConn conn "kk0" <&> \x -> case x of
-                                      Just s -> case DT.readMaybe s :: Maybe GLfloat of
-                                                     Just x -> x
-                                                     Nothing -> 0
-                                      Nothing -> 0
-    let k = Vector3 0 1 0
-    let m = (map . map) rf $ padMat3To4 $ rotMat k θ
-    multiModelviewMat $ join m
-    preservingMatrix $ do
-      drawAxis (Vector3 1 0 0) [red, fmap (*0.5) red]
-      drawAxis (Vector3 0 1 0) [green, fmap (*05) green]
-      drawAxis (Vector3 0 0 1) [blue, fmap (*05) blue]
-      drawCubeQuad 0.02
-    redisDisconnect conn
+    bracket
+      (redisConnectDefault)
+      (redisDisconnect)
+      (\conn -> do
+        -- θ <- readAndParse "/tmp/aa.x"
+        θ <- redisGetConn conn "kk0" <&> \x -> read (fromMaybe "0" x) :: GLfloat 
 
+        let k = Vector3 0 1 0
+        let m = (map . map) rf $ padMat3To4 $ rotMat k θ
+        multiModelviewMat $ join m
+        preservingMatrix $ do
+          drawAxis (Vector3 1 0 0) [red, fmap (*0.5) red]
+          drawAxis (Vector3 0 1 0) [green, fmap (*05) green]
+          drawAxis (Vector3 0 0 1) [blue, fmap (*05) blue]
+          drawCubeQuad 0.02
+      ) 
+    
   -- drawFinal w ioArray initRectGrid
   showCurrBoardArr ioArray
   drawRectGridX initRectGrid

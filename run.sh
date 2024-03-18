@@ -55,12 +55,17 @@ old=$(timeNow)
 name="PlotGeometry"
 
 if [[ "$#" -eq 1 ]]; then
-    
     # KEY: build only
-    if [[ "$1" == 'c' ]]; then 
+    if [[ "$1" == '-b' || "$1" == 'b' ]]; then 
 	    stack build "$name" 
 	    # stack build --ghc-options="-j +RTS -A128m -n2m -RTS" PlotGeometry 
         printcText 'Build only'
+    elif [[ "$1" == '-e' || "$1" == 'e' ]]; then
+      stack exec "$name"
+    elif [[ "$1" == '-h' || "$1" == "h" ]]; then
+      printcText "run.sh    => stack build $name && stack exec $name"
+      printcText "run.sh -b => stack build $name: Only"
+      printcText "run.sh -e => stack exec $name: Only"
     fi
 else
 	stack build "$name" && stack exec "$name" 
