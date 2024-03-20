@@ -1088,25 +1088,24 @@ keyBoardCallBack2d refCamRot refGlobalRef ioArray window key scanCode keyState m
             | k == G.Key'0 -> modifyIORef refCamRot (\s -> let a = delta_ s in s {delta_ = a {xx = 0, yy = 0, zz = - _STEP}})
             | k == G.Key'8 -> modifyIORef refCamRot (\s -> let a = delta_ s in s {delta_ = a {xx = 0, yy = 0, zz = 0, ww = _STEP}})
             | k == G.Key'7 -> modifyIORef refCamRot (\s -> let a = delta_ s in s {delta_ = a {xx = 0, yy = 0, zz = 0, ww = - _STEP}})
-            | k == G.Key'X -> do
-                modifyIORef refCamRot (\s -> let a = modelview_ s in s{modelview_ = a{eye_ = Vertex3 0 1.0 0}})
+            | k == G.Key'X -> return () 
+                -- modifyIORef refCamRot (\s -> let a = modelview_ s in s{modelview_ = a{eye_ = Vertex3 0 1.0 0}})
                 -- modifyIORef refGlobalRef (\s -> s {xyzAxis_ = flipAxis (xyzAxis_ s) xAxis})
             --                                  ↑
             --                                  + -> Update Coord to YZ-plane
 
             --  | k == G.Key'Y -> modifyIORef refGlobalRef (\s -> s {xyzAxis_ = flipAxis (xyzAxis_ s) yAxis})
             | k == G.Key'1 -> do
-                modifyIORef refCamRot (\s -> s{currXYZ_ = 1, vecAxisY_ = vecY_ s, vecAxisZ_ = vecZ_ s})
+                modifyIORef refCamRot (\s -> s{currXYZ_ = 1})
             | k == G.Key'2 -> do
-                modifyIORef refCamRot (\s -> s{currXYZ_ = 2, vecAxisX_ = vecX_ s, vecAxisZ_ = vecZ_ s})
+                modifyIORef refCamRot (\s -> s{currXYZ_ = 2})
             | k == G.Key'3 -> do
-                vec <- readIORef refCamRot <&> vecRotZ_
                 modifyIORef refCamRot (\s -> s{currXYZ_ = 3})
   
-            | k == G.Key'Y ->
-                modifyIORef refCamRot (\s -> let a = modelview_ s in s{modelview_ = a{eye_ = Vertex3 0 1.0 0, up_ = Vector3 1.0 0 0}})
-            | k == G.Key'T ->
-                modifyIORef refCamRot (\s -> let a = modelview_ s in s{modelview_ = a{eye_ = Vertex3 0 (-1.0) 0, up_ = Vector3 1.0 0 0}})
+            | k == G.Key'Y -> return ()
+                -- modifyIORef refCamRot (\s -> let a = modelview_ s in s{modelview_ = a{eye_ = Vertex3 0 1.0 0, up_ = Vector3 1.0 0 0}})
+            | k == G.Key'T -> return ()
+                -- modifyIORef refCamRot (\s -> let a = modelview_ s in s{modelview_ = a{eye_ = Vertex3 0 (-1.0) 0, up_ = Vector3 1.0 0 0}})
 
             --                                  ↑
             --                                  + -> Update Coord to XZ-plane
@@ -1196,10 +1195,6 @@ keyBoardCallBack3d refCamRot refGlobalRef ioArray window key scanCode keyState m
                 currXYZ <- readIORef refCamRot <&> currXYZ_
                 case currXYZ of
                    v | v == 1 -> do
-
---                         modifyIORef refCamRot (\s -> s{alpha_ = alpha_ s + _STEP})
---                         alpha <- readIORef refCamRot <&> alpha_
-
                          let vecXCF = coordFrame ^._1
                          let vecYCF = coordFrame ^._2
                          let vecZCF = coordFrame ^._3
@@ -1227,8 +1222,6 @@ keyBoardCallBack3d refCamRot refGlobalRef ioArray window key scanCode keyState m
                          logFileG $ map show lsZ
   
                      | v == 2 -> do
---                         modifyIORef refCamRot (\s -> s{beta_ = beta_ s + _STEP})
-
                          let vecXCF = coordFrame ^._1
                          let vecYCF = coordFrame ^._2
                          let vecZCF = coordFrame ^._3
@@ -1257,7 +1250,7 @@ keyBoardCallBack3d refCamRot refGlobalRef ioArray window key scanCode keyState m
                          modifyIORef refCamRot (\s -> s{coordFrame_ = (vx3, vy3, vecZCF)})
                      | v == 4 -> do
                          persp <- readIORef refCamRot <&> persp_
-                         modifyIORef refCamRot (\s -> s{persp_ = persp{zn_ = zn_ persp + 0.1}})
+                         modifyIORef refCamRot (\s -> s{persp_ = persp{zn_ = zn_ persp + 0.04}})
                          persp' <- readIORef refCamRot <&> persp_
                          logFileGT "persp_1" [show persp']
   
@@ -1267,7 +1260,6 @@ keyBoardCallBack3d refCamRot refGlobalRef ioArray window key scanCode keyState m
                 currXYZ <- readIORef refCamRot <&> currXYZ_
                 case currXYZ of
                    v | v == 1 -> do
---                         modifyIORef refCamRot (\s -> s{alpha_ = alpha_ s - _STEP})
                          let vecXCF = coordFrame ^._1
                          let vecYCF = coordFrame ^._2
                          let vecZCF = coordFrame ^._3
@@ -1276,12 +1268,9 @@ keyBoardCallBack3d refCamRot refGlobalRef ioArray window key scanCode keyState m
                          let lsZ = vecToList3 vecZCF ++ [0]
                          let vy3 = (listToVec . join) $ mm `multiVec` lsY
                          let vz3 = (listToVec . join) $ mm `multiVec` lsZ
-
                          modifyIORef refCamRot (\s -> s{coordFrameMat_ = let m = coordFrameMat_ s in mm `multiMat` m})
                          modifyIORef refCamRot (\s -> s{coordFrame_ = (vecXCF, vy3, vz3)})
-
                      | v == 2 -> do
---                         modifyIORef refCamRot (\s -> s{beta_ = beta_ s - _STEP})
                          let vecXCF = coordFrame ^._1
                          let vecYCF = coordFrame ^._2
                          let vecZCF = coordFrame ^._3
@@ -1307,7 +1296,7 @@ keyBoardCallBack3d refCamRot refGlobalRef ioArray window key scanCode keyState m
                          modifyIORef refCamRot (\s -> s{coordFrame_ = (vx3, vy3, vecZCF)})
                      | v == 4 -> do
                          persp <- readIORef refCamRot <&> persp_
-                         modifyIORef refCamRot (\s -> s{persp_ = persp{zn_ = zn_ persp - 0.1}})                             
+                         modifyIORef refCamRot (\s -> s{persp_ = persp{zn_ = zn_ persp - 0.04}})                             
                      | otherwise -> error "Invalid currXYZ_ value, Key Left"
 
             | k == G.Key'Up -> modifyIORef refCamRot (\s -> let a = delta_ s in s {delta_ = a {xx = 0, yy = _STEP, zz = 0}})
@@ -1315,9 +1304,9 @@ keyBoardCallBack3d refCamRot refGlobalRef ioArray window key scanCode keyState m
             | k == G.Key'X -> do
                 modifyIORef refCamRot (\s -> let a = modelview_ s in s{modelview_ = a{eye_ = Vertex3 0 1.0 0}})
             | k == G.Key'1 -> do
-                modifyIORef refCamRot (\s -> s{currXYZ_ = 1, vecAxisY_ = vecY_ s, vecAxisZ_ = vecZ_ s})
+                modifyIORef refCamRot (\s -> s{currXYZ_ = 1})
             | k == G.Key'2 -> do
-                modifyIORef refCamRot (\s -> s{currXYZ_ = 2, vecAxisX_ = vecX_ s, vecAxisZ_ = vecZ_ s})
+                modifyIORef refCamRot (\s -> s{currXYZ_ = 2})
             | k == G.Key'3 -> do
                 modifyIORef refCamRot (\s -> s{currXYZ_ = 3})
             | k == G.Key'4 -> do
@@ -1329,14 +1318,13 @@ keyBoardCallBack3d refCamRot refGlobalRef ioArray window key scanCode keyState m
                    v | v == 1 -> do
                          modifyIORef refCamRot(\s ->let a = modelview_ s in s{modelview_ = a{eye_ = Vertex3 0 0 1.0}})
                      | v == 2 -> do
-                         -- modifyIORef refCamRot(\s ->let a = modelview_ s in s{modelview_ = a{eye_ = Vertex3 0 1.0 0, up_ = Vector3 1.0 0 0}})
-                         pp ""
+                         modifyIORef refCamRot(\s ->let a = modelview_ s in s{modelview_ = a{eye_ = Vertex3 (-1) 0 0}})
                      | v == 3 -> do
                          modifyIORef refCamRot(\s ->let a = modelview_ s in s{modelview_ = a{eye_ = Vertex3 1.0 0 0}})
-                     | otherwise -> do
-                         pp "unknown number"  
+                     | v == 4 -> do
+                         modifyIORef refCamRot(\s ->let a = modelview_ s in s{modelview_ = a{eye_ = Vertex3 0 0 (-1)}})
+                     | otherwise -> return () 
   
-            --  | k == G.Key'O -> modifyIORef refGlobalRef (\s -> s {fovDegree_ = fovDegree_ s + 5.0})
             | k == G.Key'O -> do
                 modifyIORef refCamRot (\s -> let p = persp_ s in s{persp_ = p{fov_ = fov_ p + 5.0}})
             --                                  ↑

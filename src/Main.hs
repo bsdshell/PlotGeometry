@@ -312,32 +312,57 @@ intersectLineTri (p0, p1) q@(q0, q1, q2) = isPerp || isPara ? Nothing $ Just vx
                     in p1' +: (x *: u)
 --}
 
-{--
-drawSphereNX_1::Int -> GLfloat ->Int -> Bool -> [Color3 GLdouble] -> (GLfloat -> GLfloat)-> IO()
-drawSphereNX_1 n radius k isFilled cc f = do
-    let δ = 2*pi / rf n :: GLfloat
-        ϵ = pi / rf n :: GLfloat
+drawSphereNX_2::Int -> GLdouble ->Int -> Bool -> [Color3 GLdouble] -> IO()
+drawSphereNX_2 n radius k isFilled cc = do
+    let δ = 2*pi / rf n :: GLdouble
+        ϵ = pi / rf n :: GLdouble
         r = radius
-        fx::Int -> Int -> GLfloat
+        fx::Int -> Int -> GLdouble
         fx i j = let i' = rf i
                      j' = rf j
                      α  = δ * i'
                      β  = ϵ * j'
-                 in r * cos β * f α
-        fy::Int -> Int -> GLfloat
+                 in r * cos β * cos α
+        fy::Int -> Int -> GLdouble
         fy i j = let i' = rf i
                      j' = rf j
                      α  = δ * i'
                      β  = ϵ * j'
-                 in r * sin α
-        fz::Int -> Int -> GLfloat
+                 in r * cos β * sin α
+        fz::Int -> Int -> GLdouble
         fz i j = let i' = rf i
                      j' = rf j
                      α  = δ * i'
                      β  = ϵ * j'
-                 in r * cos α * sin β
-        in drawParamSphereX fx fy fz n k isFilled cc
---}
+                 in r * sin β 
+        ss = [[Vertex3 (fx i j)
+                       (fy i j)
+                       (fz i j) | i <- take (n+1) [0..n]] | j <- let m = div n 2 in take (k+1) [m, m - 1 .. -m]] :: [[Vertex3 GLdouble]]
+        in drawParamSphereX isFilled ss cc
+
+currRotatedAxis :: IORef CameraRot -> IO ()
+currRotatedAxis refCamRot = do
+  currXYZ <- readIORef refCamRot <&> currXYZ_
+  let cc = [green, blue, cyan, magenta, yellow]
+  let r = 0.04
+  let leng = 0.02
+  let v0 = Vector3 0 0.7 0 :: Vector3 GLfloat 
+  case currXYZ of
+     v | v == 1 -> do
+           preservingMatrix $ do
+             rotate (-90) (Vector3 0 0 1 :: Vector3 GLfloat)
+             translate v0 
+             cylinder r leng (True, True) cc
+       | v == 2 -> do
+           preservingMatrix $ do
+             translate v0 
+             cylinder r leng (True, True) cc
+       | v == 3 -> do
+           preservingMatrix $ do
+             rotate 90 (Vector3 1 0 0 :: Vector3 GLfloat)
+             translate v0 
+             cylinder r leng (True, True) cc
+       | otherwise -> return () 
 
 mainLoop ::
   (G.Window, G.Window) ->
@@ -361,6 +386,8 @@ mainLoop (w3d, w2d) (refCamRot3d, refCamRot2d) refGlobal refGlobalFrame animaSta
 -- /Users/aaa/myfile/bitbucket/tmp/xx_9059.x
   rotateWorldX refCamRot3d
 
+  currRotatedAxis refCamRot3d
+
   when False $ do
     preservingMatrix $ do
       let cc = [green, blue, cyan, magenta, yellow]
@@ -369,6 +396,7 @@ mainLoop (w3d, w2d) (refCamRot3d, refCamRot2d) refGlobal refGlobalFrame animaSta
   when False $ do
     ls <- rfl "./bb.x" >>= \cx -> return $ map (\x -> read x :: (Vertex3 GLfloat, Vertex3 GLfloat)) cx
     drawArrowProj ls (True, False, False)
+
 
   when False $ do
     let cc = [green, blue, cyan, magenta, yellow]
@@ -412,11 +440,10 @@ mainLoop (w3d, w2d) (refCamRot3d, refCamRot2d) refGlobal refGlobalFrame animaSta
         let isFilled = False 
         -- translate (Vector3 (0.2 * x) 0 0 :: Vector3 GLdouble)
         -- drawSphereN 10 0.4 cc
-        drawSphereNX 40 0.4 30 isFilled cc
-        -- mapM_ (\f -> drawSphereNX_1 10 0.4 1 isFilled cc f) [sin, cos, tan, f, g]
+        drawSphereNX 40 30 0.4 isFilled cc
             ) [1]
 
-  when True $ do
+  when False $ do
     drawParaboloid
 
   when False $ do
@@ -488,7 +515,8 @@ mainLoop (w3d, w2d) (refCamRot3d, refCamRot2d) refGlobal refGlobalFrame animaSta
       (\conn -> do
         -- θ <- readAndParse "/tmp/aa.x"
         θ <- redisGetConn conn "kk0" <&> \x -> read (fromMaybe "0" x) :: GLfloat 
-
+        return ()
+        {--
         let k = Vector3 0 1 0
         let m = (map . map) rf $ padMat3To4 $ rotMat k θ
         multiModelviewMat $ join m
@@ -497,6 +525,7 @@ mainLoop (w3d, w2d) (refCamRot3d, refCamRot2d) refGlobal refGlobalFrame animaSta
           drawAxis (Vector3 0 1 0) [green, fmap (*05) green]
           drawAxis (Vector3 0 0 1) [blue, fmap (*05) blue]
           drawCubeQuad 0.02
+        --}
       ) 
     
   -- drawFinal w ioArray initRectGrid
