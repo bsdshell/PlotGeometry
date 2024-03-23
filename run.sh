@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/local/bin/bash
 
 #================================================================================ 
 # Last Upate: Fri Oct  7 12:39:43 PDT 2016 
@@ -58,8 +58,16 @@ if [[ "$#" -eq 1 ]]; then
     # KEY: build only
     if [[ "$1" == '-b' || "$1" == 'b' ]]; then 
 	    stack build "$name" 
+      if [[ "$?" -eq 0 ]]; then
+        new=$(timeNow)
+        diff=$((new - old))
+        echo "$diff sec = $(date)" >> buildlog.txt
+        notify.sh "Built successfully  $diff sec"
+      else
+        notify.sh "ERROR: Built unsuccessfully $diff sec"
+      fi
 	    # stack build --ghc-options="-j +RTS -A128m -n2m -RTS" PlotGeometry 
-        printcText 'Build only'
+      printcText 'Build only'
     elif [[ "$1" == '-e' || "$1" == 'e' ]]; then
       stack exec "$name"
     elif [[ "$1" == '-h' || "$1" == "h" ]]; then
@@ -73,4 +81,10 @@ fi
 
 new=$(timeNow)
 diff=$((new - old))
-echo "Build Time: $diff seconds"
+printcText "Build Time: $diff seconds"
+
+gen="hasktags --ctags /Users/aaa/myfile/github/PlotGeometry/src/*.hs"
+printcText "$gen"
+eval "$gen"
+
+

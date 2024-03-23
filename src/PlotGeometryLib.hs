@@ -898,6 +898,11 @@ multiModelviewMat ls = do
   GL.multMatrix mat
   getMatrixComponents RowMajor mat -- [GLfloat]
 
+multiModelviewMatD :: [GLdouble] -> IO [GLdouble]
+multiModelviewMatD ls = do
+  mat <- newMatrix RowMajor ls :: IO (GLmatrix GLdouble)
+  GL.multMatrix mat
+  getMatrixComponents RowMajor mat 
   
 getMatrixTest :: IO ()
 getMatrixTest = do
@@ -1059,29 +1064,8 @@ keyBoardCallBack2d refCamRot refGlobalRef ioArray window key scanCode keyState m
         case key of
           k
 
-            | k == G.Key'Right -> do
-                currXYZ <- readIORef refCamRot <&> currXYZ_
-                case currXYZ of
-                   v | v == 1 -> do
-                         modifyIORef refCamRot (\s -> s{alpha_ = alpha_ s + _STEP})
-                     | v == 2 -> do
-                         modifyIORef refCamRot (\s -> s{beta_ = beta_ s + _STEP})
-                     | v == 3 -> do
-                         modifyIORef refCamRot (\s -> s{gramma_ = gramma_ s + _STEP})
-                     | otherwise -> error "Invalid currXYZ_ value, Key Right"
-  
-            | k == G.Key'Left -> do
-                currXYZ <- readIORef refCamRot <&> currXYZ_
-                case currXYZ of
-                   v | v == 1 -> do
-                         modifyIORef refCamRot (\s -> s{alpha_ = alpha_ s - _STEP})
-                     | v == 2 -> do
-                         modifyIORef refCamRot (\s -> s{beta_ = beta_ s - _STEP})
-                     | v == 3 -> do
-                         modifyIORef refCamRot (\s -> s{gramma_ = gramma_ s - _STEP})
-                     | otherwise -> error "Invalid currXYZ_ value, Key Left"
-  
-            --  | k == G.Key'Left -> modifyIORef refCamRot (\s -> let a = delta_ s in s {delta_ = a {xx = - _STEP, yy = 0, zz = 0}})
+            | k == G.Key'Right -> return ()
+            | k == G.Key'Left -> return () 
             | k == G.Key'Up -> modifyIORef refCamRot (\s -> let a = delta_ s in s {delta_ = a {xx = 0, yy = _STEP, zz = 0}})
             | k == G.Key'Down -> modifyIORef refCamRot (\s -> let a = delta_ s in s {delta_ = a {xx = 0, yy = - _STEP, zz = 0}})
             | k == G.Key'9 -> modifyIORef refCamRot (\s -> let a = delta_ s in s {delta_ = a {xx = 0, yy = 0, zz = _STEP}})
@@ -1089,19 +1073,9 @@ keyBoardCallBack2d refCamRot refGlobalRef ioArray window key scanCode keyState m
             | k == G.Key'8 -> modifyIORef refCamRot (\s -> let a = delta_ s in s {delta_ = a {xx = 0, yy = 0, zz = 0, ww = _STEP}})
             | k == G.Key'7 -> modifyIORef refCamRot (\s -> let a = delta_ s in s {delta_ = a {xx = 0, yy = 0, zz = 0, ww = - _STEP}})
             | k == G.Key'X -> return () 
-                -- modifyIORef refCamRot (\s -> let a = modelview_ s in s{modelview_ = a{eye_ = Vertex3 0 1.0 0}})
-                -- modifyIORef refGlobalRef (\s -> s {xyzAxis_ = flipAxis (xyzAxis_ s) xAxis})
-            --                                  ↑
-            --                                  + -> Update Coord to YZ-plane
-
-            --  | k == G.Key'Y -> modifyIORef refGlobalRef (\s -> s {xyzAxis_ = flipAxis (xyzAxis_ s) yAxis})
-            | k == G.Key'1 -> do
-                modifyIORef refCamRot (\s -> s{currXYZ_ = 1})
-            | k == G.Key'2 -> do
-                modifyIORef refCamRot (\s -> s{currXYZ_ = 2})
-            | k == G.Key'3 -> do
-                modifyIORef refCamRot (\s -> s{currXYZ_ = 3})
-  
+            | k == G.Key'1 -> return () 
+            | k == G.Key'2 -> return () 
+            | k == G.Key'3 -> return () 
             | k == G.Key'Y -> return ()
                 -- modifyIORef refCamRot (\s -> let a = modelview_ s in s{modelview_ = a{eye_ = Vertex3 0 1.0 0, up_ = Vector3 1.0 0 0}})
             | k == G.Key'T -> return ()
@@ -1174,7 +1148,6 @@ keyBoardCallBack2d refCamRot refGlobalRef ioArray window key scanCode keyState m
 
 keyBoardCallBack3d :: IORef CameraRot -> IORef GlobalRef -> IOArray (Int, Int, Int) BlockAttr -> G.KeyCallback
 keyBoardCallBack3d refCamRot refGlobalRef ioArray window key scanCode keyState modKeys = do
-  pp "keyBoardCallBack in $b/haskelllib/AronOpenGL.hs"
   putStrLn $ "inside =>" ++ show keyState ++ " " ++ show key
   globalRef <- readIORef refGlobalRef
   cam <- readIORef refCamRot
@@ -1254,8 +1227,8 @@ keyBoardCallBack3d refCamRot refGlobalRef ioArray window key scanCode keyState m
                          persp' <- readIORef refCamRot <&> persp_
                          logFileGT "persp_1" [show persp']
   
-                     | otherwise -> error "Invalid currXYZ_ value, Key Right"
-  
+                     | otherwise -> return ()  
+
             | k == G.Key'Left -> do
                 currXYZ <- readIORef refCamRot <&> currXYZ_
                 case currXYZ of
@@ -1297,7 +1270,7 @@ keyBoardCallBack3d refCamRot refGlobalRef ioArray window key scanCode keyState m
                      | v == 4 -> do
                          persp <- readIORef refCamRot <&> persp_
                          modifyIORef refCamRot (\s -> s{persp_ = persp{zn_ = zn_ persp - 0.04}})                             
-                     | otherwise -> error "Invalid currXYZ_ value, Key Left"
+                     | otherwise -> return () 
 
             | k == G.Key'Up -> modifyIORef refCamRot (\s -> let a = delta_ s in s {delta_ = a {xx = 0, yy = _STEP, zz = 0}})
             | k == G.Key'Down -> modifyIORef refCamRot (\s -> let a = delta_ s in s {delta_ = a {xx = 0, yy = - _STEP, zz = 0}})
@@ -1311,6 +1284,8 @@ keyBoardCallBack3d refCamRot refGlobalRef ioArray window key scanCode keyState m
                 modifyIORef refCamRot (\s -> s{currXYZ_ = 3})
             | k == G.Key'4 -> do
                 modifyIORef refCamRot (\s -> s{currXYZ_ = 4})
+            | k == G.Key'5 -> do
+                modifyIORef refCamRot (\s -> s{currXYZ_ = 5})
   
             | k == G.Key'Z -> do
                 currXYZ <- readIORef refCamRot <&> currXYZ_
@@ -1346,6 +1321,11 @@ keyBoardCallBack3d refCamRot refGlobalRef ioArray window key scanCode keyState m
                    v | v == 1 || v == 2 || v == 3 || v == 4 -> do
                          modifyIORef refCamRot (\s -> s {coordFrame_ = (Vector3 1 0 0, Vector3 0 1 0, Vector3 0 0 1)})
                          modifyIORef refCamRot (\s -> s {coordFrameMat_ = matId 4})                           
+                     | v == 5 -> do
+                         modifyIORef refCamRot (\s -> s {coordFrame_ = (Vector3 1 0 0, Vector3 0 1 0, Vector3 0 0 1)})
+                         modifyIORef refCamRot (\s -> s {coordFrameMat_ = matId 4})                           
+                         modifyIORef refCamRot (\s -> s {modelview_ = initModuleView})                           
+                         modifyIORef refCamRot (\s -> s {persp_ = initPersp})                           
                      | otherwise -> return () 
   
             | otherwise -> pp $ "Unknown Key Press" ++ show key
@@ -2447,19 +2427,34 @@ drawArrowX (p0, p1) = do
       v = p0 -: p1
       l = nr v 
 
-drawArrowXX :: (Vertex3 GLfloat, Vertex3 GLfloat) -> IO()
-drawArrowXX (p0, p1) = do 
+drawArrowN1 :: (Vertex3 GLdouble, Vertex3 GLdouble) -> IO()
+drawArrowN1 (p0, p1) = do 
   let ang = let rad =  angle2Vector (Vector3 1 0 0) v 
             in if ve_2 v < 0 then -(180/pi * rad) else 180/pi * rad
   preservingMatrix $ do
     translate $ vec_ p0  
-    rotate ang (Vector3 0 0 1 :: Vector3 GLfloat)
-    cylinderArrowXXX l cl
+    rotate ang (Vector3 0 0 1 :: Vector3 GLdouble)
+    cylinderArrowXAxis l cl
     where  
       cl = [green, blue, yellow]
       v = p0 -: p1
       l = nr v 
 
+drawArrowN1X :: (Vertex3 GLdouble, Vertex3 GLdouble) -> IO()
+drawArrowN1X (p0, p1) = do 
+  let ang = let rad =  angle2Vector (Vector3 1 0 0) v 
+            in if ve_2 v < 0 then -(180/pi * rad) else 180/pi * rad
+  preservingMatrix $ do
+    translate $ vec_ p0  
+    rotate ang (Vector3 0 0 1 :: Vector3 GLdouble)
+    cylinderArrowXAxis l cl
+    where  
+      cl = [green, blue, yellow]
+      v = p0 -: p1
+      l = nr v 
+{-|
+ - KEY: draw arrow from the origin
+ -}
 drawArrow3dCen ::Vector3 GLfloat -> [Color3 GLdouble] -> IO()
 drawArrow3dCen v cl = do
   preservingMatrix $ do
@@ -2483,7 +2478,22 @@ drawArrow3d (p0, p1) cl = do
     (➞) (Vertex3 x y z) (Vertex3 x' y' z') = Vector3 (x' - x) (y' - y) (z' - z) 
     --HEAVY TRIANGLE-HEADED RIGHTWARDS ARROW
     --Unicode: U+279E, UTF-8: E2 9E 9E
-
+   
+drawArrow3dX :: (Vertex3 GLdouble, Vertex3 GLdouble) -> [Color3 GLdouble] -> IO()
+drawArrow3dX (p0, p1) cl = do
+  preservingMatrix $ do
+    let v@(Vector3 x y z) = p0 ➞ p1  -- vector from p0 to p1
+    let v0 = Vector3 1 0 0 :: Vector3 GLdouble
+    let m = padMat3To4 $ rotToVecMat v0 v 
+    translate (vec_ p0)
+    multiModelviewMatD $ join m
+    cylinderArrow (rf $ nr v) cl
+  where
+    (➞) :: (Floating a) => Vertex3 a -> Vertex3 a -> Vector3 a
+    (➞) (Vertex3 x y z) (Vertex3 x' y' z') = Vector3 (x' - x) (y' - y) (z' - z) 
+    --HEAVY TRIANGLE-HEADED RIGHTWARDS ARROW
+    --Unicode: U+279E, UTF-8: E2 9E 9E
+    
 drawArrowColor :: (Vertex3 GLfloat, Vertex3 GLfloat) -> [Color3 GLdouble] -> IO()
 drawArrowColor (p0, p1) cr = do 
   let v = p0 -: p1
@@ -2552,13 +2562,14 @@ padMat3To4 m = tran mx
 -}
 cylinderArrow :: GLfloat -> [Color3 GLdouble] -> IO()
 cylinderArrow leng cl = do
+  let minLen = 0.1
   let cyRatio = 0.9 :: GLfloat
-  let cyLen =   rf $leng * cyRatio
+  let cyLen = leng < minLen ? minLen $ rf $leng * cyRatio
   let cyRadius = cyLen * 0.01
   let coneRadius = cyRadius * 2.0
-  let coneHeigh = rf $ leng * (1.0 - cyRatio)
-  rotate (-90) (Vector3 0 0 1 ::Vector3 GLdouble)
+  let coneHeigh = rf $ cyLen * (1.0 - cyRatio)
   preservingMatrix $ do
+    rotate (-90) (Vector3 0 0 1 ::Vector3 GLdouble)
     cylinder cyRadius cyLen (True, True)  cl
     translate (Vector3 0 (rf cyLen) 0 :: Vector3 GLdouble)
     cone coneRadius coneHeigh 8 cl
@@ -2605,8 +2616,13 @@ cylinderArrowXX leng cl = do
     translate (Vector3 (rf cyLen) 0 0 :: Vector3 GLdouble)
     coneX coneRadius coneHeigh 8 [red] 
 
-cylinderArrowXXX :: GLfloat -> [Color3 GLdouble] -> IO()
-cylinderArrowXXX leng cl = do
+{-|
+ -
+ - KEY: draw cylinder in x-axis , Vector3 1 0 0
+ - DATE: Fri 22 Mar 13:20:27 2024 
+ -}
+cylinderArrowXAxis :: GLdouble -> [Color3 GLdouble] -> IO()
+cylinderArrowXAxis leng cl = do
   let cyRatio = 0.9 
   let cyLen =   rf $leng * cyRatio
   let cyRadius = 0.003
@@ -2625,6 +2641,35 @@ cylinderArrowXXX leng cl = do
     cylinderXX cyRadius cyLen (True, True) cl 
     translate (Vector3 (rf cyLen) 0 0 :: Vector3 GLdouble)
     coneX coneRadius coneHeigh 8 [red] 
+
+{--
+{-|
+ -
+ - KEY: draw cylinder in x-axis , Vector3 1 0 0
+ - DATE: Fri 22 Mar 13:20:27 2024 
+ - NOTE: deprecated, use 'cylinderArrowXAxis', better name
+ -}
+cylinderArrowN1 :: GLdouble -> [Color3 GLdouble] -> IO()
+cylinderArrowN1 leng cl = do
+  let cyRatio = 0.9 
+  let cyLen =   rf $leng * cyRatio
+  let cyRadius = 0.003
+  let coneRadius = cyRadius * 2
+  let coneHeigh = rf $ leng * (1.0 - cyRatio) 
+  logFileGEx False "" [
+                        "leng=" ++ show leng 
+                       ,"cyRatio=" ++ show cyRatio
+                       ,"cyLen=" ++ show cyLen
+                       ,"cyRadius=" ++ show cyRadius
+                       ,"coneRadius=" ++ show coneRadius
+                       ,"coneHeigh=" ++ show coneHeigh
+                       ]
+  preservingMatrix $ do
+    -- rotate (-90) (Vector3 0 0 1 :: Vector3 GLdouble)
+    cylinderXX cyRadius cyLen (True, True) cl 
+    translate (Vector3 (rf cyLen) 0 0 :: Vector3 GLdouble)
+    coneX coneRadius coneHeigh 8 [red] 
+--}
 
 coord :: IO()
 coord = do
@@ -2754,6 +2799,13 @@ rotateWorldX :: IORef CameraRot -> IO ()
 rotateWorldX refCamRot = do
   currXYZ <- readIORef refCamRot <&> currXYZ_
   coordFrame <- readIORef refCamRot <&> coordFrame_
+
+  coordFrameMat <- readIORef refCamRot <&> coordFrameMat_
+  let ls = join coordFrameMat
+  multiModelviewMat ls
+  return ()
+
+  {--
   case currXYZ of
     n | n == 1 -> do
           coordFrameMat <- readIORef refCamRot <&> coordFrameMat_
@@ -2777,7 +2829,7 @@ rotateWorldX refCamRot = do
           return ()
       | otherwise -> do
           error $ "currXYZ invalid Integer = " ++ show currXYZ
-
+   --}
 gg cx = map (\(a, b) -> zipWith (\x y -> [x, y]) a b) cx
 fg x y = zipWith (\a b -> (a, b)) (init x) (tail y)
 hg m = map join $ gg $ fg m m
