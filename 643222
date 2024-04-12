@@ -1,0 +1,4 @@
+todo:*: todo code
+VanSky.java
+Change the following function to
+getCityAndAdId(String city, String category, String url)

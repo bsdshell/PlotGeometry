@@ -57,7 +57,9 @@ name="PlotGeometry"
 if [[ "$#" -eq 1 ]]; then
     # KEY: build only
     if [[ "$1" == '-b' || "$1" == 'b' ]]; then 
+	    # stack build --ghc-options="-fno-code" "$name" 
 	    stack build "$name" 
+      # cabal build --ghc-options=-fno-code
       if [[ "$?" -eq 0 ]]; then
         new=$(timeNow)
         diff=$((new - old))
@@ -76,6 +78,7 @@ if [[ "$#" -eq 1 ]]; then
       printcText "run.sh -e => stack exec $name: Only"
     fi
 else
+	# stack build --ghc-options="-fno-code" "$name" && stack exec "$name" 
 	stack build "$name" && stack exec "$name" 
 fi
 

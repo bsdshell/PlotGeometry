@@ -96,7 +96,7 @@ import Graphics.Rendering.OpenGL
       Normal(normal),
       Normal3(..),
       Color(color),
-      PrimitiveMode(Triangles, TriangleStrip, LineLoop, Quads, TriangleFan, Points),
+      PrimitiveMode(Triangles, TriangleStrip, Lines, LineLoop, Quads, TriangleFan, Points),
       GLdouble,
       Color3(..),
       Vertex3(..),
@@ -177,6 +177,8 @@ mymain fpath = do
                      modifyIORef refGlobal (\s -> s{bufferMap_ = mx})
                      ) ls
       --}
+                         
+                                
       -- writeIORef refGlobal $ setDrawPts   globalRef spherePtsX
       modifyIORef refGlobal (\x -> x {drawPts_ = spherePtsX})
       modifyIORef refGlobal (\x -> x {randomPts_ = randomPts})
@@ -184,7 +186,6 @@ mymain fpath = do
       let cx = circleNArc' (Vertex3 0.4 0 0) 0.4 40 (0, pi)
       let cy = curvePtK (const 0) (0, 0.8) 40
       let cx' = [cx, cy]
-
 
       ls <- randomIntList 10 (1, 4) >>= \cx -> return $ randomVexList (Vertex3 0.0 0.0 0.0) cx
       modifyIORef refGlobal (\x -> x {randomWalk_ = ls})
@@ -221,7 +222,7 @@ mymain fpath = do
     DATE: Sunday, 25 February 2024 23:09 PST
 -}
 circlePtX :: Vertex3 GLfloat -> GLfloat -> [Vertex3 GLfloat]
-circlePtX (Vertex3 x0 y0 z0) r =[let alpha = (pi2*n)/num in Vertex3 ((rf r)*sin(alpha) + x0) ((rf r)*cos(alpha) + y0) (0 + z0) | n <- [1..num]]
+circlePtX (Vertex3 x0 y0 z0) r =[let alpha = (pi2*n)/num in Vertex3 (rf r*sin alpha + x0) (rf r*cos alpha + y0) (0 + z0) | n <- [1..num]]
    where
        num = 4
        pi2 = 2*pi::Float
@@ -293,7 +294,7 @@ projnX u v = c `mu` v
   where
    dot w k = (sum . join) $ (zipWith . zipWith) (*) w k
    d      = dot u v
-   c      = d/(dot v v)
+   c      = d/dot v v
    mu a w = (map . map)(*a) w
 
 
@@ -342,6 +343,7 @@ intersectLineTri (p0, p1) q@(q0, q1, q2) = isPerp || isPara ? Nothing $ Just vx
                         x = h1/(tan ang)
                     in p1' +: (x *: u)
 --}
+
 
 drawSphereNX_2::Int -> GLdouble ->Int -> Bool -> [Color3 GLdouble] -> IO()
 drawSphereNX_2 n radius k isFilled cc = do
@@ -586,8 +588,8 @@ drawParamSphereX isFilled ss cc = do
  - NOTE: right hand rule
  -}
 isCCW3d :: (Floating a, Ord a) => (Vertex3 a, Vertex3 a, Vertex3 a) -> Bool 
-isCCW3d (p0, p1, p2) | not $ ((abs $ ang - pi/2) < epsilon) && ang < pi/2 = True
-                     | not $ ((abs $ ang - pi/2) < epsilon) && ang > pi/2 = False
+isCCW3d (p0, p1, p2) | not $ abs (ang - pi/2) < epsilon && ang < pi/2 = True
+                     | not $ abs (ang - pi/2) < epsilon && ang > pi/2 = False
                      | otherwise = error "ERROR: isCCW3d"
   where
     epsilon = 1e-12
@@ -599,8 +601,8 @@ isCCW3d (p0, p1, p2) | not $ ((abs $ ang - pi/2) < epsilon) && ang < pi/2 = True
             Nothing -> error "ERROR: three pts does not form a triangle"
 
 
-isCCW :: (Floating a, Ord a) => (Vertex3 a, Vertex3 a, Vertex3 a) -> (Vector3 a) -> Bool
-isCCW (p0, p1, p2) up = if notAll ve then (ang < pi/2 ? True $ False) else ((x' + y' + z') > 0 ? True $ False)
+isCCW :: (Floating a, Ord a) => (Vertex3 a, Vertex3 a, Vertex3 a) -> Vector3 a -> Bool
+isCCW (p0, p1, p2) up = if notAll ve then ang < pi/2 ? True $ False else x' + y' + z' > 0 ? True $ False
   where
     v01 = p0 -: p1
     v12 = p1 -: p2
@@ -633,6 +635,376 @@ parseArg s = ArgInput {cmd_ = cmd, fpath_ = fpath}
                                         b = last st
                                         in hasPrefix "-" a ? (tail a, b) $ error $ "Invalid cmd=" ++ a) $ error "Invalid input argument"
 
+circleX::(GLdouble, GLdouble) -> Vertex3 GLdouble ->[Vertex3 GLdouble]
+circleX (r2, r1) (Vertex3 x0 y0 z0) =[let alpha = (pi2*n)/num in Vertex3 (r2 * cos alpha + x0) y0 (r1 * sin alpha + z0) | n <- [0..num]]
+        where
+          num = 10
+          pi2 = 2*pi::GLdouble
+  
+projXZ :: Vector3 GLdouble -> Vector3 GLdouble
+projXZ (Vector3 x y z) = Vector3 x 0 z
+
+rotXAxisYUp :: Vector3 GLdouble -> (GLdouble, GLdouble)
+rotXAxisYUp v@(Vector3 x y z) = (angX, angYUp)
+  where
+    e₁ = Vector3 1 0 0
+    vxz = projXZ v
+    angX = angle2Vector e₁ vxz
+    angYUp = angle2Vector vxz v
+  
+-- xxx1
+drawCylinderEllipseX :: (GLdouble, Vertex3 GLdouble, Vector3 GLdouble, [Color3 GLdouble]) -> (GLdouble, Vertex3 GLdouble, Vector3 GLdouble, [Color3 GLdouble]) ->
+  [Color3 GLdouble] ->
+  Bool ->
+  IO ([Vertex3 GLdouble], [Vertex3 GLdouble], [[GLdouble]])
+drawCylinderEllipseX (r0, p0, v0, c0) (r1, p1, v1, c1) cc isShown = do
+  preservingMatrix $ do
+    let (cx0, _) = let majorAxis = r0
+                       (angX, angUp) = rotXAxisYUp v0
+                       minorAxis = majorAxis / cos angUp
+                       in ellipseRot (majorAxis, minorAxis) (angX, angUp) p0
+    let (cx1, m₄) = let majorAxis = r1
+                        px0 = projXZ v1
+                        angX = angle2Vector e₁ px0
+                        angUp = angle2Vector v1 px0
+                        minorAxis = majorAxis / cos angUp
+                        in ellipseRot (majorAxis, minorAxis) (angX, angUp) p1
+    let cx0' = p0 : cx0
+    let cx1' = p1 : cx1
+    let cy = combineList cx0 cx1
+    when isShown $ do
+      drawPrimitiveX TriangleFan cx0' c0
+      drawPrimitiveX TriangleFan cx1' c1
+      drawPrimitiveX TriangleStrip cy cc'
+    return (cx0, cx1, m₄)
+    where
+      e₁ = Vector3 1 0 0
+      c1' = cls c1
+      cc' = cls cc
+  
+                           
+drawCylinder3dX :: GLdouble -> (Vertex3 GLdouble, Vertex3 GLdouble, Vertex3 GLdouble) -> [Color3 GLdouble] -> IO()
+drawCylinder3dX r (p0, p1, p2) cl = do
+  preservingMatrix $ do
+    let v = p0 ➞ p1  -- vector from p0 to p1
+    let e₂ = Vector3 0 1 0 :: Vector3 GLdouble
+    -- let m1 = padMat3To4 $ rotToVecMat e₂ v 
+    -- translate (vec_ p0)
+    -- multiModelviewMatD $ join m1
+  
+      {--  
+    b1 <- getRedisX "b1"
+    when (b1 /= 0) $ do
+      cylinderArrow (nr v) cl
+      --}
+    
+    let v01 = p0 -: p1
+    let v12 = p1 -: p2
+    let k = case v01 `crossF` v12 of
+                   Just v -> v
+                   Nothing -> error "p0 p1 p2 can not be colinear."
+    
+    let r0 = r
+    let v0 = Vector3 1 0 0
+
+    let c0 = [cyan, blue]
+    let t0 = (r0, p0, v0, c0)
+    
+    let r1 = r
+    let v1 = Vector3 1 0 0
+    let c1 = [green, yellow]
+    let t1 = (r1, p1, v1, c1)
+    -- let t1 = (r1, p1, k, c1)    
+    
+    let cc = [gray, magenta]
+    b2 <- getRedisX "b2"
+    when (b2 /= 0) $ do
+      let mt x = tran [vl x]
+      let m = rotToVecMat e₂ v
+      (cx0, cx1, m₄) <- drawCylinderEllipseX t0 t1 cc False
+      -- let cx0' = map (\v -> lv $ join $ m ∘ mt v) cx0
+      let t0@(sx0, sx0')= let s = rotVerMap m cx0 p0 in (s, p0:s)
+      let t1@(sx1, sx1')= let s = rotVerMap m cx1 p1 in (s, p1:s)
+      let cy' = combineList sx0 sx1
+      
+      drawArrow3d (p1, p1 +: (0.5 *: uv k)) [cyan]
+      
+      let θ = let x = angle2Vector (-v01) v12 in x/2
+      let m₁ = rotMat k (pi/2  - θ)
+      let cxx = rotVerMap m₁ sx1 p1
+      let cx11 = p1 : cxx
+      let r = 0.1
+
+
+      -- let cirls = map (\(Vertex3 x y z) -> [x, y, z, 1]) $ ellipticPtXZ (Vertex3 0 0 0) (r, r/cos (pi/2 - θ)) 10
+      let cirls = map (\(Vertex3 x y z) -> [x, y, z, 1]) $ ellipticPtXZ (Vertex3 0 0 0) (r, r) 10
+      let eccx =  map (\x -> let ls = join $ m₄ `multiVec` x in (listToVer . init) ls) cirls
+      let eccx' = rotVerMap m₁ eccx p1
+
+      -- drawPrimitiveX TriangleFan cx11 (cls [red, white])
+      drawPrimitiveX TriangleFan eccx' (cls [blue, green])
+      drawPrimitiveX TriangleFan eccx (cls [blue, red])  
+  
+      drawPrimitiveX TriangleFan sx0' c0
+      drawPrimitiveX TriangleFan sx1' c1
+      drawPrimitiveX TriangleStrip (combineList sx0 cxx) (cls cc)
+    when True $ do
+      let rx = 0.1
+      let rz = 0.2
+      let p0 = Vertex3 0 0 0
+      let pts = p0 : ellipticPtXZ p0 (rx, rz) 10
+      drawPrimitiveX TriangleFan pts (cls [magenta, white])
+  where
+    vl = verToList
+    lv = listToVer
+    (➞) :: (Floating a) => Vertex3 a -> Vertex3 a -> Vector3 a
+    (➞) (Vertex3 x y z) (Vertex3 x' y' z') = Vector3 (x' - x) (y' - y) (z' - z) 
+    --HEAVY TRIANGLE-HEADED RIGHTWARDS ARROW
+    --Unicode: U+279E, UTF-8: E2 9E 9E
+
+{-|
+  KEY: normal of three pts, normal of three points, normal of 3 pts
+
+  @
+  p0 = Vertex3 0 0 0
+  p1 = Vertex3 1 0 0
+  p2 = Vertex3 1 1 0 
+
+  pn = normalThreePts (p0, p1, p2)
+  fw "pn"
+  pn
+  @
+-}
+normalThreePts :: (Vertex3 GLdouble, Vertex3 GLdouble, Vertex3 GLdouble) -> Maybe (Vector3 GLdouble)
+normalThreePts (p0, p1, p2) = v01 `crossF` v12
+  where
+    v01 = p0 -: p1
+    v12 = p1 -: p2
+  
+isParallelPlane :: (Vertex3 GLdouble, Vertex3 GLdouble, Vertex3 GLdouble) ->
+                    (Vertex3 GLdouble, Vertex3 GLdouble, Vertex3 GLdouble) ->
+                    Bool
+isParallelPlane p@(p0, p1, p2) q@(q0, q1, q2) = case n0 `crossF` n1 of
+                                                      Just x -> False
+                                                      Nothing -> True
+  where
+    n0 = case normalThreePts p of
+              Just x -> x
+              Nothing -> error "ERROR:444, three pts can be colinear."
+    n1 = case normalThreePts q of
+              Just x -> x
+              Nothing -> error "ERROR:555, three pts can be colinear."
+
+isPerpPlane :: Vector3 GLdouble -> (Vertex3 GLdouble, Vertex3 GLdouble, Vertex3 GLdouble) -> Bool
+isPerpPlane v (p0, p1, p2) = case v01 `crossF` v12 of
+                                Just u -> case u `crossF` v of
+                                           Just x -> False
+                                           Nothing -> True
+                                Nothing -> error "ERROR:123, three pts can not be colinear."
+  where
+    v01 = p0 -: p1
+    v12 = p1 -: p2
+
+
+{-|
+  KEY: form a 4x4 translation matrix
+
+  @
+  > printMat $ mat4Tran (Vertex3 1 2 3)
+  1.0 0.0 0.0 1.0
+  0.0 1.0 0.0 2.0
+  0.0 0.0 1.0 3.0
+  0.0 0.0 0.0 1.0
+  @
+-}
+mat4Tran :: Vertex3 GLdouble -> [[GLdouble]]
+mat4Tran v = m
+  where
+    m = padMat3To4Tran (matId 3) (verToList v ++ [1])
+  
+multiM4Ver :: [[GLdouble]] -> Vertex3 GLdouble -> Vertex3 GLdouble
+multiM4Ver m₄ v = listToVer ls 
+  where
+    ls = join $ m₄ `multiVec` (verToList v ++ [1])
+
+flipY :: [Vertex3 GLdouble] -> [Vertex3 GLdouble]
+flipY = map (\(Vertex3 x y z) -> Vertex3 x (-y) z)
+  
+ellipticThreePts :: (Vertex3 GLdouble, Vertex3 GLdouble, Vertex3 GLdouble) -> GLdouble -> IO [Vertex3 GLdouble]
+ellipticThreePts (p0x, p1x, p2x) r = do
+  let flipY v = vx_2 v < 0 ? out (\a b -> a == b && a == 2 ? (-1) $ (a == b ? 1 $ 0)) [1..3] [1..3] $ matId 3
+  -- let flipY v = matId 3
+  let matY = flipY p1x
+  let mx = mat4Tran (-p0x)
+  {--  
+  let p0 = multiVertex matY (p0x + (-p0x))
+  let p1 = multiVertex matY (p1x + (-p0x))
+  let p2 = multiVertex matY (p2x + (-p0x))
+  --}  
+  let p0 = p0x + (-p0x)
+  let p1 = p1x + (-p0x)
+  let p2 = p2x + (-p0x)
+  
+  let vz = Vertex3 0 0 0
+  let vx = Vector3 1 0 0
+  let vy = Vector3 0 1 0
+  let vzAxis = Vector3 0 0 1
+  let c0 = [green, blue]
+  let c1 = [red, white]
+  let c2 = [yellow, white]
+  {--  
+  drawArrow3d (p0, p1) c0
+  drawArrow3d (p1, p2) c1
+  --}  
+  let v01 = p0 -: p1
+  let v12 = p1 -: p2
+  let v02 = p0 -: p2
+
+  let ry = r
+  let rz = r
+  let num = 10
+  let cc = [gray, magenta]
+  let q0 = Vertex3 0 0 0
+  let q1 = Vertex3 (nr v01) 0 0
+  let cx0 = ellipticPtYZ q0 (ry, rz) num
+  let cx1 = ellipticPtYZ q1 (ry, rz) num
+
+  -- cylinder on x-axis
+  b1 <- getRedisX "b1"
+  when (b1 /= 0) $ do
+    drawPrimitiveX TriangleFan (q0 : cx0) [green, white]
+    drawPrimitiveX TriangleFan (q1 : cx1) [red, white]
+    drawPrimitiveX TriangleStrip (combineList cx0 cx1) (cls cc)
+
+  let m = rotToVecMat vx v01  
+  let cx0' = rotVerMap m (q0:cx0) vz
+  let cx1' = rotVerMap m (q1:cx1) vz
+  
+  b2 <- getRedisX "b2"
+  when (b2 /= 0) $ do
+    drawPrimitiveX TriangleFan cx0' [green, white, blue]
+    drawPrimitiveX TriangleFan cx1' [red, white, blue]
+  
+  let m₁ = rotToVecMat vx v12
+  let s0 = Vertex3 0 0 0
+  let s1 = Vertex3 (nr v12) 0 0
+  let sx0 = ellipticPtYZ s0 (ry, rz) num
+  let sx1 = ellipticPtYZ s1 (ry, rz) num
+  let sx0' = map (+: v01) $ rotVerMap m₁ (s0 : sx0) vz
+  let sx1' = map (+: v01) $ rotVerMap m₁ (s1 : sx1) vz
+  
+  b3 <- getRedisX "b3"
+  when (b3 /= 0) $ do
+    let (!) = (!!)
+    drawPrimitiveX TriangleFan sx0' [white, cyan]
+    drawPrimitiveX TriangleFan sx1' [red, yellow]
+    drawArrow3d (head sx0', head sx1') c2
+    let b = isParallelPlane (sx0' ! 0, sx0' ! 1, sx0' ! 2) (sx1' ! 0, sx1' ! 1, sx1' ! 2)
+    logFileGT "bxx" [show b]
+    let b1 = isPerpPlane v12 (sx0' ! 0, sx0' ! 1, sx0' ! 2)
+    logFileGT "bkk" [show b1]
+    return ()
+  
+  -- reverse v01 to vy
+  let m₂ = rotToVecMat v01 vy
+  let cx00' = rotVerMap m₂ cx0' vz
+  let cx11' = rotVerMap m₂ cx1' vz
+  b4 <- getRedisX "b4"
+  when (b4 /= 0) $ do  
+    drawPrimitiveX TriangleFan cx00' [green, white]
+    drawPrimitiveX TriangleFan cx11' [red, white]
+    drawPrimitiveX TriangleStrip (combineList (tail cx00') (tail cx11')) (cls [blue, red])
+  -- b5 <- getRedisX "b5"
+  let sx00' = rotVerMap m₂ sx0' vz
+  let sx11' = rotVerMap m₂ sx1' vz
+  b5 <- getRedisX "b5"
+  when (b5 /= 0) $ do
+    drawPrimitiveX TriangleFan sx00' [magenta, blue]
+    drawPrimitiveX TriangleFan sx11' [yellow, blue]
+    drawPrimitiveX TriangleStrip (combineList (tail sx00') (tail sx11')) (cls [white, yellow])
+  
+  -- xxx2
+  -- when True $ do
+  -- project v12 onto y-axis
+  let v12' = let x0 = head sx00'; x1 = head sx11' in x0 -: x1
+  let vr = let u = projv v12' vy in v12' - u
+  -- FIXME: is there bug here?
+  -- let ang = let a = angle2Vector vx vr in ve_3 vr < 0 ? negate a $ a
+  let ang = let a = angle2Vector vx vr in a
+  logFileGT "angkk" [show ang]
+  logFileGT "vrkk" [show vr]
+  -- rotate around Vector3 0 1 0 in ang, onto plane xy plane
+  let m₃ = rotMat vy ang
+  let ax00' = rotVerMap m₃ cx00' vz
+  let ax11' = rotVerMap m₃ cx11' vz
+  let bx00' = rotVerMap m₃ sx00' vz
+  let bx11' = rotVerMap m₃ sx11' vz
+  b6 <- getRedisX "b6"
+  when (b6 /= 0) $ do
+    drawPrimitiveX TriangleFan bx00' [white, blue]
+    drawPrimitiveX TriangleFan bx11' [cyan, white]
+    drawPrimitiveX TriangleStrip (combineList (tail bx00') (tail bx11')) (cls [green, red])
+  logFileGT "pxx1" [show $ head bx00']
+  logFileGT "pxx2" [show $ head bx11']
+  let x0 = head bx00'
+  let x1 = head bx11'
+  let vxx = uv $ x1 -: x0
+  -- drawArrow3d (x1, x1 +: (1.2 *: vxx) ) [color2, color3]
+
+  let angHalf = let a = angle2Vector vy vxx in a/2
+  let angRot = pi/2 + angHalf
+  let m₄ = rotMat (Vector3 0 0 1) angRot
+  let ellipicCirc = rotVerMap m₄ ax11' (head ax11')
+  -- drawPrimitiveX TriangleFan ellipicCirc [color3, color1]
+  let rx = r
+  let rz = r
+  -- if angRot > pi/2, then cos angRot < 0
+  let majorAxis = abs $ rz /cos angRot
+  let ax0 = ellipticPtXZ (Vertex3 0 0 0) (rz, rz) 10
+  let ax1 = ellipticPtXZ (Vertex3 0 0 0) (majorAxis, rz) 10    
+  let cen = head ax11'
+  let pts' = cen:map (+cen) ax1
+  let ax111' = rotVerMap m₄ pts' cen
+
+  b7 <- getRedisX "b7"
+  when (b7 /= 0) $ do
+    drawPrimitiveX TriangleFan ax111' [color1, color2]
+    drawPrimitiveX TriangleStrip (combineList (tail bx11') (tail ax111')) (cls [color2, red])
+    drawPrimitiveX TriangleStrip (combineList (tail ax00') (tail ax111')) (cls [color3, blue])
+
+  let mr₃ = rotMat vy (-ang)
+  b8 <- getRedisX "b8"
+  when (b8 /= 0) $ do
+    let dx1 = combineList (tail bx11') (tail ax111')
+    let dx0 = combineList (tail ax00') (tail ax111')
+    let dx1' = rotVerMap mr₃ dx1 vz
+    let dx0' = rotVerMap mr₃ dx0 vz      
+    drawPrimitiveX TriangleStrip dx1' (cls [color2, green])
+    drawPrimitiveX TriangleStrip dx0' (cls [color3, magenta])
+
+  let mr₂ = rotToVecMat vy v01
+  b9 <- getRedisX "b9"
+  -- when (b9 /= 0) $ do
+  let dx1 = combineList (tail bx11') (tail ax111')
+  let dx0 = combineList (tail ax00') (tail ax111')
+  let dx1' = rotVerMap mr₃ dx1 vz
+  let dx0' = rotVerMap mr₃ dx0 vz
+  let retx = rotVerMap mr₃ ax111' vz
+  -- translate back to p0
+  {--      
+  let dx11' = map (+p0x) $ rotVerMap matY (rotVerMap mr₂ dx1' vz) vz
+  let dx00' = map (+p0x) $ rotVerMap matY (rotVerMap mr₂ dx0' vz) vz
+  --}      
+  let dx11' = map (+p0x) $ rotVerMap mr₂ dx1' vz
+  let dx00' = map (+p0x) $ rotVerMap mr₂ dx0' vz
+  let retx' = map (+p0x) $ rotVerMap mr₂ retx vz
+  -- drawPrimitiveX TriangleStrip dx11' (cls [color2, blue])
+  -- drawPrimitiveX TriangleStrip dx00' (cls [color3, white])
+  {--  
+  drawArrow3d (p0x, p1x) [color2, color4]
+  drawArrow3d (p1x, p2x) [color3, color1]
+  --}  
+  return $ tail retx'
 
 mainLoop ::
   (G.Window, G.Window) ->
@@ -655,9 +1027,237 @@ mainLoop (w3d, w2d) (refCamRot3d, refCamRot2d) refGlobal refGlobalFrame animaSta
 -- /Users/aaa/myfile/bitbucket/tmp/xx_9059.x
   rotateWorldX refCamRot3d
   currRotatedAxis refCamRot3d
+  
+  when False $ do
+    let p0 = Vertex3 0.1 0.1 0.1
+    let p1 = Vertex3 0.4 0.4 0.4
+    drawArrow3d (p0, p1) [gray, white]
+  
+    let p4 = Vertex3 0.1 0.1 0.1
+    let p5 = Vertex3 0.3 0.3 0.3
+    let p5' = Vertex3 0.4 (-0.3) 0.1
+    let v55 = p5' -: p5
+    let r = 0.1
+    drawCylinder3dX r (p4, p5, p5') [green, yellow]
+    drawArrow3d (p5', p5 +: (0.2 *: v55)) [green]
+  
+    -- let p6 = p5
+    -- let p7 = Vertex3 0.4 (-0.3) 0.1
+    -- let p7' = Vertex3 0.1 0.2 0.4    
+    -- let r = 0.1
+    -- drawCylinder3dX r (p5, p5', p7') [red, blue]
+    -- drawArrow3d (p7, p6 +: (0.2 *: (p7 -: p6))) [magenta, blue]
 
-  -- xxx
+    let v0 = p4 -: p5
+    let v1 = p5 -: p5'
+    let vn = case v0 `crossF` v1 of
+                     Just v -> v
+                     Nothing -> error "ERROR: p4 p5 p6 are colinear"
+    
+    -- drawArrow3d (p5, p5 +: (0.2 *: uv vn)) [red, green]
+    let ang01 = angle2Vector v0 (-v1)
+    logFileGT "ang01" [show ang01]
+  
   when True $ do
+    let vz = Vertex3 0 0 0
+    let r0 = 0.1
+    let p0 = Vertex3 0 0 0
+    let v0 = Vector3 1 0 1
+    let c0 = [cyan, blue]
+    let t0 = (r0, p0, v0, c0)
+    
+    let r1 = r0
+    let p1 = Vertex3 0 0.6 0
+    let v1 = Vector3 1 0 1
+    let c1 = [green, yellow]
+    let t1 = (r1, p1, v1, c1)
+    let cc = [gray, magenta]
+    let py = Vector3 0 1 0
+    let q₁ = Vertex3 0 0 0
+    let q₂ = Vertex3 0.1 0.1 (-0.1)
+    let qv = q₁ -: q₂
+    (cx0, cx1, _) <- drawCylinderEllipseX t0 t1 cc False
+    -- let cy = combineList cx0 cx1
+    when False $ do
+      drawPrimitiveX TriangleFan (p0:cx0) [green, white]
+      drawPrimitiveX TriangleFan (p1:cx1) [red, blue]
+      -- drawPrimitiveX TriangleStrip cy cc'
+    when False $ do
+      let m = rotToVecMat py qv
+      let m' = rotToVecMat qv py
+      let cx0' = rotVerMap m (p0:cx0) vz
+      -- translation from p1 to q₂
+
+      let cx1' = rotVerMap m (p1:cx1) vz
+      drawPrimitiveX TriangleFan cx0' [magenta, yellow]
+      drawPrimitiveX TriangleFan cx1' [green, red]
+      let p1' = m `multiVertex` p1
+      drawArrow3d (p0, p1') [white, gray]
+      drawPrimitiveX TriangleFan (rotVerMap m' cx0' vz) [red, yellow]
+      drawPrimitiveX TriangleFan (rotVerMap m' cx1' vz) [blue, red]
+    when False $ do
+      -- let p0 = Vertex3 0.1 (-0.2) 0.2
+      let r = 0.05
+      let p0 = Vertex3 (-0.1) (-0.3) (0.2)
+      -- BUG: there is issue when y is negative
+      -- let p1 = Vertex3 0.1 (-0.6) (-0.1)
+      let p1 = Vertex3 0.1 (-0.4) (-0.1)
+      let p2 = Vertex3 0.2 (0.6) (-0.3)
+      ex <- ellipticThreePts (p0, p1, p2) r
+      return ()
+    when True $ do
+      let r = 0.02
+      -- let pts = ellipticPtYZ (Vertex3 0 0 0)  (0.4, 0.6) 10
+      let pts = [let r = 0.2; alpha = 2*pi/10; x = r * cos (alpha * d); y = r * sin (alpha * d); z = (d*0.01) in Vertex3 x y z | d <- [0..20]]
+      -- let ls = take (len pts - 1) $ listSlide (pts ++ pts) 3
+      let ls = listSlide pts 3
+      lt <- mapM (\(a:b:c:_) -> do
+                    ellipticThreePts (a, b, c) r
+            ) ls
+      -- let lr = listSlide (lt ++ take 1 lt) 2
+      let lr = listSlide lt 2
+      mapM_ (\(a:b:_) -> do
+                let la = combineList a b
+                drawPrimitiveX TriangleStrip la [color1, gray]
+                ) lr
+      
+      return ()
+    return ()
+    {--  
+    let r00 = 0.2
+    let p00 = Vertex3 0 0 0
+    let v00 = Vector3 1 0 0
+    let c00 = [green, red]
+    let t00 = (r00, p00, v00, c00)
+    
+    let r11 = 0.2
+    let p11 = Vertex3 0 0.4 0
+    let v11 = Vector3 1 0 0
+    let c11 = [green, yellow]
+    let t11 = (r11, p11, v11, c11)
+    let ccc = [white, blue]
+    (cx0, cx1, _) <- drawCylinderEllipseX t00 t11 ccc True
+    pp "ok"
+    --}
+        {--  
+    let p0 = Vertex3 0 0 0
+        p1 = Vertex3 0.2 0 0
+        in drawArrow3d (p0, p1) [blue, yellow]
+  
+    let p0 = Vertex3 0.2 0 0
+        p1 = Vertex3 0 0 0.3
+        in drawArrow3d (p0, p1) [gray, white]
+        --}  
+  when False $ do
+    let lc = cls [magenta, red, blue]    
+    let nv = Vector3 0.1 0.1 0.1
+    let vxz = projXZ nv
+    let angX = angle2Vector (Vector3 1 0 0) vxz
+    let angUp = angle2Vector nv vxz
+    let px = Vertex3 0 0 0
+    let majorAxis = 0.2
+    let minorAxis = majorAxis / cos angUp
+    let (ls, _)= ellipseRot (majorAxis, minorAxis) (-angX, angUp) px
+    drawArrow3d (px, px +: nv) [gray, white]
+    drawPrimitiveX TriangleFan (px : ls) lc
+
+
+  -- (r = GLdouble, Vertex3 GLdouble, Vector3 GLdouble) -> (r, Vertex3 GLdouble, Vector3 GLdouble) -> IO()
+  -- xxx0
+  when False $ do
+    let pxz (Vector3 x y z) = Vector3 x 0 z    
+    let px = Vertex3 0 0 0
+    let nv = Vector3 0.1 0.1 0.1
+    let vxz = pxz nv
+    let angX = angle2Vector (Vector3 1 0 0) vxz
+    let angUp = angle2Vector nv vxz
+    let p0 = Vertex3 0 0 0
+    let p1 = Vertex3 0 0.4 0
+    let majorAxis = 0.2
+    let minorAxis = majorAxis / cos angUp
+
+    logFileGT "majorAxis" [show majorAxis] 
+    logFileGT "minorAxis" [show minorAxis] 
+    logFileGT "angX" [show angX] 
+    logFileGT "angUp" [show angUp] 
+  
+    let (cx0, _) = ellipseRot (majorAxis, majorAxis) (0, 0) p0
+    
+    let (cx1, _) = ellipseRot (majorAxis, minorAxis) (-angX, angUp) p1
+    let t0 = (p0, cx0, [green, blue, gray])
+    let t1 = (p1, cx1, [yellow, white, red])
+
+    drawArrow3d (p1, p1 +: nv) [gray, white]    
+    drawCylinderEX t0 t1
+  
+  when False $ do
+    let t = (Vertex3 0 0 0, Vertex3 0 0.3 0.1)
+    let lc = join $ repeat [cyan, magenta, yellow]
+    drawCylinderEllipse t lc
+  
+  when False $ do
+    preservingMatrix $ do
+      let la = join $ repeat [magenta, red, blue]
+      let lc = join $ repeat [cyan, magenta, yellow]
+      let vc = Vertex3 0 0 0 :: Vertex3 GLdouble
+      let rw = 0.2
+      ang <- getRedisD "ang1"
+      let a0 = rw / cos ang
+      -- let ls = circleX (a0, rw) vc
+
+      let slot = 7
+      let interval = 500
+      (_, inx, timeIndex, tup0, inx0, tup1, inx1, animaState) <- readAnimaState animaStateArr slot interval
+  
+      let f0 = tup0 ^._1
+      let f1 = tup1 ^._1
+      
+      let d = pi/20
+      -- let ls = ellipseRot (0.3, 0.2) (d * rf y0, d * rf y1) (Vertex3 0 0 0)
+      let (ls, _) = ellipseRot (0.3, 0.2) (d * rf inx0, d * rf inx1) (Vertex3 0 0 0)
+      logFileGT "timeIndex" [show timeIndex]
+      logFileGT "inx0" [show inx0]
+      logFileGT "inx1" [show inx1]
+      preservingMatrix $ do
+        -- rotate (180/pi * ang) (Vector3 0 0 1 :: Vector3 GLdouble)
+        preservingMatrix $ do
+          renderPrimitive LineLoop $ mapM_(\v -> do
+              color black
+              vertex v) ls
+          renderPrimitive TriangleFan $ mapM_(\(c, v) -> do
+              color c
+              vertex v) $ zip lc (vc : ls)
+      case timeIndex of
+          t | t `elem` [0..9] -> do
+                writeAnimaState animaStateArr animaState{tup0_ = (f0, inx0), inx0_ = inx0, inx1_ = inx1}
+            | t `elem` [10..19] -> do
+                writeAnimaState animaStateArr animaState{tup0_ = (id, inx0), inx0_ = inx0, tup1_ = (\x -> x + 1, inx1), inx1_ = inx1}
+            | otherwise -> do
+                writeAnimaState animaStateArr animaState{tup0_ = (id, inx0), inx0_ = inx0, tup1_ = (id, inx1), inx1_ = inx1}
+
+      preservingMatrix $ do
+        -- rotate (180/pi * (2*ang)) (Vector3 0 1 0 :: Vector3 GLdouble)        
+        -- rotate (180/pi * ang) (Vector3 0 0 1 :: Vector3 GLdouble)
+        preservingMatrix $ do
+          renderPrimitive LineLoop $ mapM_(\v -> do
+              color black
+              vertex v) ls
+          renderPrimitive TriangleFan $ mapM_(\(c, v) -> do
+              color c
+              vertex v) $ zip la (vc : ls)  
+  
+  
+    isx <- getRedisX "isx"
+    when (isx == 0) $ do  
+      preservingMatrix $ do
+        let lc = join $ repeat [cyan, magenta, yellow]
+        let nv = Vector3 0 1 0
+        let p0 = Vertex3 0 (-0.3) 0
+        let p1 = Vertex3 0 0.3 0
+        let r = 0.2
+        drawCylinder3d r (p0, p1) (nv, 0) (nv, 0) lc
+
+  when False $ do
     let vx = Vertex3
     let lc = join $ repeat [cyan, magenta, yellow]
     let ld = join $ repeat [white, gray]
@@ -701,51 +1301,6 @@ mainLoop (w3d, w2d) (refCamRot3d, refCamRot2d) refGlobal refGlobalFrame animaSta
       drawArrow3dX (p2, p2 +: nv) [cyan, green]
       drawArrow3dX (p0, p0 +: nv) [gray, white]
 
-  when True $ do
-    argStr <- readIORef refGlobal <&> argStr_
-    ls <- null argStr ? readGLScriptDraw fpath $ let arg = parseArg argStr in readGLScriptDraw (fpath_ arg)
-    logFileGT "fpath" $ map show ls
-
-    bufferMap <- readIORef refGlobal <&> bufferMap_
-    let lb = map snd $ DM.toList bufferMap
-    mapM_ (\(shape, buffer) -> do
-      case shape of 
-        c | c == "arrow" -> do 
-            let mls = map (\x -> DT.readMaybe x :: Maybe (Vertex3 GLdouble, Vertex3 GLdouble)) buffer 
-            let pts = map (fromJust) $ filter (/= Nothing) mls
-            let c1 = [green, blue]
-            let c2 = [cyan, magenta, yellow]
-            let c3 = [magenta, yellow]
-            let p0  = Vertex3 0 0.1 0.1 
-            let p1  = Vertex3 0 0.3 (-0.2) 
-            let p2  = Vertex3 0 0.2 0.3 
-            mapM_ (\t -> drawArrow3dX t c1) pts
-          | c == "triangle" -> do 
-            logFileGT "triangle_me" [c]
-            let mls = map (\x -> DT.readMaybe x :: Maybe (Vertex3 GLdouble, Vertex3 GLdouble, Vertex3 GLdouble)) buffer 
-            let pts = map (fromJust) $ filter (/= Nothing) mls
-            let c1 = [green, blue]
-            let c2 = [cyan, magenta, yellow]
-            let c3 = [magenta, yellow]
-            let tri = (Vertex3 0 0 0, Vertex3 0.4 0 0, Vertex3 0 0 (negate 0.5) :: (Vertex3 GLdouble))
-            mapM_ (\t -> drawTriangleVexX t c1) pts
-          | c == "curve" -> do 
-            let mls = map (\x -> DT.readMaybe x :: Maybe (Vertex3 GLdouble)) buffer 
-            let pts = map (fromJust) $ filter (/= Nothing) mls
-            let c1 = [green, blue]
-            let c2 = [cyan, magenta, yellow]
-            let c3 = [magenta, yellow]
-            drawSegmentFromToD red pts
-          | c == "cube" -> do 
-            let mls = map (\x -> DT.readMaybe x :: Maybe (GLdouble, Vertex3 GLdouble)) buffer 
-            let pts = map (fromJust) $ filter (/= Nothing) mls
-            let c1 = [green, blue]
-            let c2 = [cyan, magenta, yellow]
-            let c3 = [magenta, yellow]
-            mapM_ (\t -> drawCubeQuadT t) pts 
-          | otherwise -> return ()
-          ) lb 
-
   isShownAxis <- readIORef refCamRot3d <&> isShownAxis_
   when isShownAxis $ do
     drawAxis (Vector3 1 0 0) [red, fmap (*0.5) red]
@@ -778,6 +1333,15 @@ mainLoop (w3d, w2d) (refCamRot3d, refCamRot2d) refGlobal refGlobalFrame animaSta
   when isShownGrid $ do
     renderCoordinates
     drawRectGridX initRectGrid
+
+  when False $ do
+    let slot = 8
+    let interval = 500
+    (_, inx, timeIndex, tup0, inx0, _, _, animaState) <- readAnimaState animaStateArr slot interval
+    let fn = "/tmp/img/img" ++ (inx0 < 10 ? "0" ++ show inx0 $ show inx0) ++ ".png"
+    saveImageOpenGL w3d fn
+    writeAnimaState animaStateArr animaState{tup0_ = ((+)1, inx0), inx0_ = inx0}
+  
   endWindow3d w3d
 
   beginWindow2d w2d
@@ -857,8 +1421,7 @@ mainLoop (w3d, w2d) (refCamRot3d, refCamRot2d) refGlobal refGlobalFrame animaSta
     let anima1 = 6
     xx <- getRedisX "int"
     let interval = xx
-    -- (isNext1, index1, animaState1) <- readAnimaState animaStateArr anima1 interval
-    (_, index1, _, _, animaState1) <- readAnimaState animaStateArr anima1 interval
+    (isNext1, index1, _, tup0, inx0, tup1, inx1,animaState1) <- readAnimaState animaStateArr anima1 interval
     let del = pi/100
     let lv = [[Vertex3 (1/n*x) (1/n*y) 0 | x <- [0.0..n]]| y <- [0.0..n]] :: [[Vertex3 GLfloat]]
     renderPrimitive Points $ mapM_(\v@(Vertex3 x y z) -> do

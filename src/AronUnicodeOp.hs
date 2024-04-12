@@ -1,0 +1,1 @@
+/Users/aaa/myfile/bitbucket/haskelllib/AronUnicodeOp.hs

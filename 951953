@@ -1,0 +1,18 @@
+shell_one_liner:*: shell one liner, one liner, sh one liner, sh oneliner, oneliner, shell oneliner
+count=0; cc=$((count + 1)); echo "cc=$cc"
+for i in *; do if [[ "$i" =~ .hs$ ]]; then echo "$i";  fi; done
+for i in $(fd); do if [[ "$i" =~ .hs$ ]]; then cat "$i" | grep --color Str; if [[ "$#" -eq 0 ]]; then echo "$i"; fi  fi; done
+while (true); do echo "do sth"; sleep 1; done
+# ls all directories ONLY
+for i in *; do if [[ -d "$i" ]]; then echo "$i"; fi; done
+ps aux | grep haskellwebapp2 | awk '{print $2}' | line 'x -> kill -9 x'
+# remove all symbolic link
+ll | grep '\->' | awk '{print $9}' | line 'x -> rm x'
+# Ascii table
+awk 'BEGIN {for (i = 32; i < 127; i++) printf "%3d 0x%2x %c\n", i, i, i }'  | pr -t6
+# flip all images
+for i in $(ls img*); do echo $i; convert -flip $i $i; done
+# convert png file to mp4
+ffmpeg -framerate 30 -pattern_type glob -i '*.png' -c:v libx264 -pix_fmt yuv420p out.mp4
+# capture current pane the latest 100 lines
+capture-pane -S -100; save-buffer /tmp/t.x

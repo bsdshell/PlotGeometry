@@ -1,0 +1,2 @@
+hoogle:*: hoogle url, curl hoogle, curl haskell, hoogle json
+curl -sS "https://hoogle.haskell.org?mode=json&hoogle=map&start=1&count=2" | jq

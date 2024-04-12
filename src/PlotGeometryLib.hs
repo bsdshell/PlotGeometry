@@ -128,6 +128,7 @@ import System.Exit
 import System.IO
 import qualified Text.Printf as PR
 import System.IO.Silently
+import AronUnicodeOp
 
 -- |
 --
@@ -1018,7 +1019,9 @@ initGlobal =
       tetrisCount_ = 1,
       tetris1_ = mkTetris1 (blockCount_ initGlobal) 0,
       tetris1X_ = (BlockAttr {isFilled_ = True, typeId_ = 1, tetrisNum_ = (blockCount_ initGlobal), color_ = blue}, bk1_ initGlobal),
-      isPaused_ = False
+      isPaused_ = False,
+      argStr_ = "",
+      bufferMap_ = DM.empty
     }
 
 {--
@@ -1048,8 +1051,7 @@ let r = MyRec = {a_ = 3, b_ = a_ + 4}
 -- DONOTDELETE: /Users/aaa/myfile/github/haskell-opengl-tetris/src/keyBoardCallBack3d-2024-01-19-11-19-06.x
 keyBoardCallBack2d :: IORef CameraRot -> IORef GlobalRef -> IOArray (Int, Int, Int) BlockAttr -> G.KeyCallback
 keyBoardCallBack2d refCamRot refGlobalRef ioArray window key scanCode keyState modKeys = do
-  pp "keyBoardCallBack in $b/haskelllib/AronOpenGL.hs"
-  putStrLn $ "inside =>" ++ show keyState ++ " " ++ show key
+  -- putStrLn $ "inside =>" ++ show keyState ++ " " ++ show key
   globalRef <- readIORef refGlobalRef
   cam <- readIORef refCamRot
   let axisOld = xyzAxis_ globalRef
@@ -1120,35 +1122,28 @@ keyBoardCallBack2d refCamRot refGlobalRef ioArray window key scanCode keyState m
               modifyIORef refGlobalRef (\s -> s {count1_ = 0})
               modifyIORef refGlobalRef (\s -> s {time1_ = nowTime})
               modifyIORef refGlobalRef (\s -> s {rot_ = True})
-              fw "Rotate Block"
-              pp "rotate me"
-            | k == G.Key'P -> do
-              pp "Pause"
-            | k == G.Key'A -> do
-              pp "rotateN 1"
-            | k == G.Key'L || k == G.Key'R -> do
-              print "kk"
-            | k == G.Key'U -> do
-              print "kk"
-            | k == G.Key'D -> do
-              print "kk"
-            | otherwise -> pp $ "Unknown Key Press" ++ show key
+            | k == G.Key'P -> return () 
+            | k == G.Key'A -> return () 
+            | k == G.Key'L || k == G.Key'R -> do return ()
+            | k == G.Key'U -> do return ()
+            | k == G.Key'D -> do return ()
+            | otherwise -> return () 
       | ks == G.KeyState'Released -> do
         -- G.KeyState'Released -> do
-        if key == G.Key'Right then pp "Release Key => Right" else pp "Press No Right"
-        if key == G.Key'Left then pp "Release Key => left" else pp "Press No Right"
-        if key == G.Key'Up then pp "Release Key => up" else pp "Release No Up"
-        if key == G.Key'Down then pp "Release Key => Down" else pp "Release No Down"
+        if key == G.Key'Right then return () else return () 
+        if key == G.Key'Left then return () else return () 
+        if key == G.Key'Up then return () else return () 
+        if key == G.Key'Down then return () else return () 
       -- if key == G.Key'R  then modifyIORef refGlobalRef (\x -> x{moveX_ = 0}) else pp "Release No Down"
       -- if key == G.Key'L  then modifyIORef refGlobalRef (\x -> x{moveY_ = 0}) else pp "Release No Down"
-      | otherwise -> pp "Unknow keyState"
+      | otherwise -> return () 
   when
     (key == G.Key'Escape && keyState == G.KeyState'Pressed)
     (G.setWindowShouldClose window True)
 
 keyBoardCallBack3d :: IORef CameraRot -> IORef GlobalRef -> IOArray (Int, Int, Int) BlockAttr -> G.KeyCallback
 keyBoardCallBack3d refCamRot refGlobalRef ioArray window key scanCode keyState modKeys = do
-  putStrLn $ "inside =>" ++ show keyState ++ " " ++ show key
+  -- putStrLn $ "inside =>" ++ show keyState ++ " " ++ show key
   globalRef <- readIORef refGlobalRef
   cam <- readIORef refCamRot
   let axisOld = xyzAxis_ globalRef
@@ -1227,6 +1222,9 @@ keyBoardCallBack3d refCamRot refGlobalRef ioArray window key scanCode keyState m
                          persp' <- readIORef refCamRot <&> persp_
                          logFileGT "persp_1" [show persp']
   
+                     | v == 5 -> return () 
+                     | v == 6 -> do 
+                         modifyIORef refCamRot (\s -> s{isShownGrid_ = not $ isShownGrid_ s})
                      | otherwise -> return ()  
 
             | k == G.Key'Left -> do
@@ -1270,6 +1268,9 @@ keyBoardCallBack3d refCamRot refGlobalRef ioArray window key scanCode keyState m
                      | v == 4 -> do
                          persp <- readIORef refCamRot <&> persp_
                          modifyIORef refCamRot (\s -> s{persp_ = persp{zn_ = zn_ persp - 0.04}})                             
+                     | v == 5 -> return () 
+                     | v == 6 -> do 
+                         modifyIORef refCamRot (\s -> s{isShownAxis_ = not $ isShownAxis_ s})
                      | otherwise -> return () 
 
             | k == G.Key'Up -> modifyIORef refCamRot (\s -> let a = delta_ s in s {delta_ = a {xx = 0, yy = _STEP, zz = 0}})
@@ -1286,6 +1287,8 @@ keyBoardCallBack3d refCamRot refGlobalRef ioArray window key scanCode keyState m
                 modifyIORef refCamRot (\s -> s{currXYZ_ = 4})
             | k == G.Key'5 -> do
                 modifyIORef refCamRot (\s -> s{currXYZ_ = 5})
+            | k == G.Key'6 -> do
+                modifyIORef refCamRot (\s -> s{currXYZ_ = 6})
   
             | k == G.Key'Z -> do
                 currXYZ <- readIORef refCamRot <&> currXYZ_
@@ -1328,21 +1331,16 @@ keyBoardCallBack3d refCamRot refGlobalRef ioArray window key scanCode keyState m
                          modifyIORef refCamRot (\s -> s {persp_ = initPersp})                           
                      | otherwise -> return () 
   
-            | otherwise -> pp $ "Unknown Key Press" ++ show key
+            | k == G.Key'K -> do
+                let fpath = "/tmp/a.hs"
+                updateBufferMap refGlobalRef fpath
+            | otherwise -> return () 
       | ks == G.KeyState'Released -> do
-        if key == G.Key'Right then do
-          pp "Release Key => Right"
-          else pp "Press No Right"
-        if key == G.Key'Left then do
-          pp "Release Key => left"
-          else pp "Press No Right"
-        if key == G.Key'Up then do
-          pp "Release Key => up"
-          else pp "Release No Up"
-        if key == G.Key'Down then do
-          pp "Release Key => Down"
-          else pp "Release No Down"
-      | otherwise -> pp "Unknow keyState"
+        if key == G.Key'Right then do return () else return () 
+        if key == G.Key'Left then do return () else return ()
+        if key == G.Key'Up then do return () else return ()
+        if key == G.Key'Down then do return () else return ()
+      | otherwise -> return () 
   when
     (key == G.Key'Escape && keyState == G.KeyState'Pressed)
     (G.setWindowShouldClose window True)
@@ -1354,8 +1352,8 @@ keyBoardCallBack3d refCamRot refGlobalRef ioArray window key scanCode keyState m
 --    NOTE: USED
 keyBoardCallBackX :: IORef Step -> IORef GlobalRef -> IOArray (Int, Int, Int) BlockAttr -> G.KeyCallback
 keyBoardCallBackX refStep refGlobalRef ioArray window key scanCode keyState modKeys = do
-  pp "keyBoardCallBack in $b/haskelllib/AronOpenGL.hs"
-  putStrLn $ "inside =>" ++ show keyState ++ " " ++ show key
+  -- pp "keyBoardCallBack in $b/haskelllib/AronOpenGL.hs"
+  -- putStrLn $ "inside =>" ++ show keyState ++ " " ++ show key
   globalRef <- readIORef refGlobalRef
   let axisOld = xyzAxis_ globalRef
   let fovOld = fovDegree_ globalRef
@@ -1421,13 +1419,13 @@ keyBoardCallBackX refStep refGlobalRef ioArray window key scanCode keyState modK
             | otherwise -> pp $ "Unknown Key Press" ++ show key
       | ks == G.KeyState'Released -> do
         -- G.KeyState'Released -> do
-        if key == G.Key'Right then pp "Release Key => Right" else pp "Press No Right"
-        if key == G.Key'Left then pp "Release Key => left" else pp "Press No Right"
-        if key == G.Key'Up then pp "Release Key => up" else pp "Release No Up"
-        if key == G.Key'Down then pp "Release Key => Down" else pp "Release No Down"
+        if key == G.Key'Right then return () else return () 
+        if key == G.Key'Left then return () else return () 
+        if key == G.Key'Up then return () else return () 
+        if key == G.Key'Down then return () else return () 
       -- if key == G.Key'R  then modifyIORef refGlobalRef (\x -> x{moveX_ = 0}) else pp "Release No Down"
       -- if key == G.Key'L  then modifyIORef refGlobalRef (\x -> x{moveY_ = 0}) else pp "Release No Down"
-      | otherwise -> pp "Unknow keyState"
+      | otherwise -> return () 
   when
     (key == G.Key'Escape && keyState == G.KeyState'Pressed)
     (G.setWindowShouldClose window True)
@@ -2217,50 +2215,81 @@ initBlockAttr =
       color_ = red
     }
 
+data IndexDel = IndexDel
+  {
+    indexX_ :: Int,
+    delIndexX_ :: Int
+  } deriving (Show, Eq)
+  
 data AnimaState = AnimaState
   { animaTime_ :: Int,
     animaIndex_ :: Int,
     animaInterval_ :: Int,
-    animaSlot_ :: Int
+    animaSlot_ :: Int,
+    isPausedInx_ :: Bool,
+    timeIndex_ :: Int,
+    delIndex_ :: Int,
+    tup0_ :: (Int -> Int, Int),
+    inx0_ :: Int,
+    tup1_ :: (Int -> Int, Int),
+    inx1_ :: Int
   }
-  deriving (Show, Eq)
 
 initAnimaState :: IO (IOArray Int AnimaState)
 initAnimaState = do
   currTime <- timeNowMilli <&> fi
-  let an = AnimaState {animaTime_ = currTime, animaIndex_ = 0, animaInterval_ = 1000, animaSlot_ = 0}
-  -- let anx = AnimaState {animaTime_ = currTime, animaIndex_ = 0, animaInterval_ = 4000, animaSlot_ = 0}
-  -- DAO.newArray (0, 5) an
+  let an = AnimaState {animaTime_ = currTime,
+                       animaIndex_ = 0,
+                       animaInterval_ = 1000,
+                       animaSlot_ = 0,
+                       isPausedInx_ = False,
+                       timeIndex_ = 0,
+                       delIndex_ = 1,
+                       tup0_ = (\x -> x + 1, 0),
+                       inx0_ = 0,
+                       tup1_ = (id, 0),
+                       inx1_ = 0
+                      }
   let ls = replicate 100 an
   DAO.newListArray (0, len ls - 1) ls
-
-readAnimaState :: IOArray Int AnimaState -> Int -> Int -> IO (Bool, Int, AnimaState)
+  
+readAnimaState :: IOArray Int AnimaState -> Int -> Int -> IO (Bool, Int, Int, (Int -> Int, Int), Int, (Int -> Int, Int), Int, AnimaState)
 readAnimaState arr ix interval = do
+  isPaused <- DAO.readArray arr ix <&> isPausedInx_
+  delIndex <- DAO.readArray arr ix <&> delIndex_
+  oldTime <- DAO.readArray arr ix <&> animaTime_
   currTime <- timeNowMilli <&> fi
   an <- DAO.readArray arr ix
   DAO.writeArray arr ix an {animaInterval_ = interval}
-  oldTime <- DAO.readArray arr ix <&> animaTime_
   interval <- DAO.readArray arr ix <&> animaInterval_
   oldIndex <- DAO.readArray arr ix <&> animaIndex_
-  let newIndex = oldIndex + 1
-  let isNext = currTime - oldTime >= interval
-  if isNext
-    then do
-      return (isNext, newIndex, an {animaTime_ = currTime, animaIndex_ = newIndex, animaSlot_ = ix})
-    else do
-      return (isNext, oldIndex, an {animaSlot_ = ix})
+  timeIndex <- DAO.readArray arr ix <&> timeIndex_
+  tup0 <- DAO.readArray arr ix <&> tup0_
 
+  tup1 <- DAO.readArray arr ix <&> tup1_
+  inx0 <- DAO.readArray arr ix <&> inx0_
+  inx1 <- DAO.readArray arr ix <&> inx1_
+  
+  let newIndex = oldIndex + delIndex
+  let isNext = currTime - oldTime >= interval
+  if isNext then do
+      let newTimeIndex = timeIndex + 1
+      let x0 = fst tup0 (snd tup0)
+      let x1 = fst tup1 (snd tup1)      
+      return (isNext, newIndex, timeIndex, tup0, x0, tup1, x1, an {animaTime_ = currTime, animaIndex_ = newIndex, animaSlot_ = ix, timeIndex_ = newTimeIndex})
+    else do
+      return (isNext, oldIndex, timeIndex, tup0, inx0, tup1, inx1, an {animaSlot_ = ix})
+  
 writeAnimaState :: IOArray Int AnimaState -> AnimaState -> IO ()
 writeAnimaState arr state = do
   let ix = animaSlot_ state
   DAO.writeArray arr ix state
 
-
 colorChange :: GLdouble -> Color3 GLdouble -> Color3 GLdouble
 colorChange x (Color3 a b c) = Color3 (a*x) (b*x) (c*x)
   
 {-|
-   KEY: draw cylinder
+   KEY: draw cylinder along +y-axis from Vertex3 0 0 0 
 
    @
    let r = 0.5             -- radius of circle
@@ -2269,27 +2298,77 @@ colorChange x (Color3 a b c) = Color3 (a*x) (b*x) (c*x)
    let rightClose = False  -- close the right end
    cylinder r l (leftClose, rightClose)
    @
+   xxx3
 -}
-cylinder :: GLfloat -> GLfloat -> (Bool, Bool) -> [Color3 GLdouble]-> IO()
+cylinder :: GLdouble -> GLdouble-> (Bool, Bool) -> [Color3 GLdouble]-> IO()
 cylinder r leng (left, right) cl = do
+  let ca = [magenta, blue]
+  let ca' = join $ repeat ca
+  let cb = [yellow, gray]
+  let cb' = join $ repeat cb 
   let d = 2.0*pi/10.0
   let lw = [0, 0 + d .. 2*pi]
-  let lv = map (\x -> Vertex3 (r * cos x) leng (r * sin x)) lw
-  let ls = map (\x -> Vertex3 (r * cos x) 0    (r * sin x)) lw
-  let lt = join $ zipWith (\x y -> [x, y]) lv ls
-  -- let lt' = zip lt $ join $ repeat [green, yellow, blue, cyan, gray, white]
+  let lv = Vertex3 0 leng 0 : map (\x -> Vertex3 (r * cos x) leng (r * sin x)) lw
+  let m =  padMat3To4Tran (rotz $ pi/4) [0, leng, 0, 1]
+  let rm =  padMat3To4Tran (matId 3) [0, -leng, 0, 1]
+  let lv' =  map (\(a:b:c:_) -> Vertex3 a b c) $ map (\x -> join $ m `multiMat` (rm `multiMat` (tran [verToList3 x ++ [1]]))) lv
+  let ls = Vertex3 0 0 0 : map (\x -> Vertex3 (r * cos x) 0  (r * sin x)) lw
+  let lt = join $ zipWith (\x y -> [x, y]) lv' ls
   let lt' = zip lt $ (join . repeat) cl
   renderPrimitive TriangleStrip $ mapM_(\(v, c) -> do
       color c
       vertex v) lt'
   when left $ do
-    renderPrimitive TriangleFan $ mapM_ (\v -> do
-        color green
-        vertex v) $ Vertex3 (r * cos 0) leng (r * sin 0) : lv
+    renderPrimitive TriangleFan $ mapM_ (\(c, v) -> do
+        color c 
+        vertex v) $ zip ca' lv' 
   when right $ do
-    renderPrimitive TriangleFan $ mapM_ (\v -> do
-        color yellow
-        vertex v) $ Vertex3 (r * cos 0) 0 (r * sin 0) : ls
+    renderPrimitive TriangleFan $ mapM_ (\(c, v) -> do
+        color c 
+        vertex v) $ zip cb' ls
+
+{-|
+--   
+--
+-- xxx4
+ -}
+cylinderYAxis :: GLdouble -> GLdouble->
+  (Vector3 GLdouble, GLdouble) ->
+  (Vector3 GLdouble, GLdouble)->
+  (Bool, Bool) ->
+  [Color3 GLdouble]->
+  IO ([Vertex3 GLdouble], [Vertex3 GLdouble])
+cylinderYAxis r leng (vk0, alpha) (vk1, beta) (left, right) cl = do
+  let ca = join $ repeat [magenta, blue]
+  let cb = join $ repeat [yellow, gray]
+  let d = 2.0*pi/10.0
+  let lw = [0, 0 + d .. 2*pi]
+  let lv = Vertex3 0 leng 0 : map (\x -> Vertex3 (r * cos x) leng (r * sin x)) lw
+  let m =  let m1 = rotMat vk1 beta in padMat3To4Tran m1 [0, leng, 0]
+  let rm =  padMat3To4Tran (matId 3) [0, -leng, 0]
+  let mx = map (\x -> join $ m ∘ rm ∘ (tran [verToList3 x ++ [1]])) lv
+  logFileGT "mx_xx" $ map show mx
+  let lv' =  map (\(a:b:c:_) -> Vertex3 a b c) $ map (\x -> join $ m ∘ (rm ∘ (tran [verToList3 x ++ [1]]))) lv
+
+  let m4 =  let m1 = rotMat vk0 alpha in padMat3To4 m1
+  let ls = Vertex3 0 0 0 : map (\x -> Vertex3 (r * cos x) 0  (r * sin x)) lw
+  let ls' =  map (\(a:b:c:_) -> Vertex3 a b c) $ map (\x -> join $ m4 ∘ (tran [verToList3 x ++ [1]])) ls
+  let lt = join $ zipWith (\x y -> [x, y]) lv' ls'
+  let lt' = zip lt $ (join . repeat) cl
+  preservingMatrix $ do
+    renderPrimitive TriangleStrip $ mapM_(\(v, c) -> do
+        color c
+        vertex v) lt'
+    when left $ do
+      renderPrimitive TriangleFan $ mapM_ (\(c, v) -> do
+          color c 
+          vertex v) $ zip ca lv' 
+    
+    when right $ do
+      renderPrimitive TriangleFan $ mapM_ (\(c, v) -> do
+          color c 
+          vertex v) $ zip cb ls'
+    return (ls', lv')
 
 cylinderXX :: GLfloat -> GLfloat -> (Bool, Bool) -> [Color3 GLdouble]-> IO()
 cylinderXX r leng (left, right) cl = do
@@ -2305,11 +2384,11 @@ cylinderXX r leng (left, right) cl = do
   when left $ do
     renderPrimitive TriangleFan $ mapM_ (\v -> do
         color green
-        vertex v) $ Vertex3 leng (r * cos 0) (r * sin 0) : lv
+        vertex v) $ Vertex3 leng 0 0 : lv
   when right $ do
     renderPrimitive TriangleFan $ mapM_ (\v -> do
         color yellow
-        vertex v) $ Vertex3 0 (r * cos 0) (r * sin 0) : ls
+        vertex v) $ Vertex3 0 0 0 : ls
 
 skewMatrix3 :: (Num a) => (a, a, a) -> [[a]]
 skewMatrix3 (x, y, z) = [
@@ -2362,30 +2441,132 @@ rotVec k v theta = ax + bx + cx
    rotMat :: Vector3 GLdouble -> GLdouble -> [[GLdouble]]
 
    -- k is unit vector rotation axis
-   -- φ is rotate around k in radius
-   rotMat k φ radius
+   -- θ is rotate around k in radius
+   -- m is column major matrix
+   let m = rotMat k θ 
+
+   let k = Vector3 0.5 0.5 0.5
+   let θ = pi/2 
+   let m33 = rotMat k θ
+   printMat m33
   @
 -}
 rotMat :: (Floating a) => Vector3 a -> a -> [[a]]
 rotMat k θ = id3 + ax + bx
   where
-    id3 = out (\a b -> a == b ? 1 $ 0) [1..3] [1..3]
+    k' = uv k
+    id3 = matId 3 
     f (Vector3 x y z) = (x, y, z)
-    m = skewMatrix3 $ f k
+    m = skewMatrix3 $ f k' 
     ax = sin θ ×× m
     bx = (1 - cos θ) ×× (m `multiMat` m)
   
--- let m = (map . map) rf $ padMat3To4 $ rotMat k (rf $ del * fi i)  
+{-|
+-- KEY: rotate around any vector
+
+   * Rodrigues's rotation formula
+
+   @
+   let m = (map . map) rf $ padMat3To4 $ rotMat k (rf $ del * fi i)  
+   @
+-}
 rotMat4Tup :: (Floating a) => Vector3 a -> a -> ([[a]], [a])
 rotMat4Tup k θ = (m4, join m4)
   where
-    id3 = out (\a b -> a == b ? 1 $ 0) [1..3] [1..3]
-    f (Vector3 x y z) = (x, y, z)
-    m = skewMatrix3 $ f k
-    ax = sin θ ×× m
-    bx = (1 - cos θ) ×× (m `multiMat` m)
-    m3 = id3 + ax + bx
+    m3 = rotMat k θ
     m4 = padMat3To4 m3
+
+{-| 
+  
+   === KEY: rotate vector to other vector
+
+   * rotate v₀ to v₁ in angle θ radian around v₀ ⊗ v₁
+
+   @
+   let v0 = Vector3 1 0 0
+   let v1 = Vector3 0 0 (-1)
+   let θ  = pi/2
+   rotToVecMat v₀ v₁ θ
+   @
+-}
+rotToVecMat :: (Floating a, Eq a) => Vector3 a -> Vector3 a  -> [[a]]
+rotToVecMat v₀ v₁ = rotMat vᵤ θ
+  where
+    vᵤ = case v₀ ⊗ v₁ of
+              Nothing -> v₀
+              -- Nothing -> error "ERROR: two vectors can not be parallel, ERROR123"
+              Just v -> v
+    θ = angle2Vector v₀ v₁
+
+    
+mulMat :: [[GLfloat]] -> Vertex3 GLfloat -> Vertex3 GLfloat
+mulMat cx vx = v0
+  where
+    ls = vexToList vx
+    v0 = listToVex $ join $ cx `multiVec` ls
+  
+rotVerMap::[[GLdouble]] -> [Vertex3 GLdouble] -> Vertex3 GLdouble -> [Vertex3 GLdouble]
+rotVerMap m cx p0 = map (\w -> let u = lv $ join $ m ∘ mt (w - p0) in u + p0) cx
+                   where mt x = tran [vl x]
+                         vl = verToList
+                         lv = listToVer
+
+multiVertex :: [[GLdouble]] -> Vertex3 GLdouble -> Vertex3 GLdouble
+multiVertex m v = listToVer $ join $ m `multiVec` vs
+  where
+    vs = verToList v
+
+{-|
+
+  @
+  -- 3x3  to 4x4 matrix
+
+    1 2 3
+    4 5 6
+    7 8 9
+
+    1 2 3 0
+    4 5 6 0
+    7 8 9 0
+    0 0 0 1
+  @
+-}
+padMat3To4 :: (Num a) => [[a]] -> [[a]]
+padMat3To4 m = tran mx
+  where
+    rep = replicate
+    r = rep 3 0
+    m' = m ++ [r]
+    mt = tran m'
+    mx = mt ++ [r ++ [1]] 
+
+{-|
+
+  KEY: insert translation matrix to 3x3 matrix
+
+  @
+  > md = matId 3
+  > m4 = padMat3To4Tran md [1, 2, 3]
+  > printMat md
+  1 0 0
+  0 1 0
+  0 0 1
+  > printMat m4
+  1 0 0 1
+  0 1 0 2
+  0 0 1 3
+  0 0 0 1
+  >
+  @
+-}  
+padMat3To4Tran :: (Num a) => [[a]] -> [a] -> [[a]]
+padMat3To4Tran m vt = tran mx
+  where
+    rep = replicate
+    r = rep 3 0
+    m' = m ++ [r]
+    mt = tran m'
+    mx = mt ++ [vt ++ [1]] 
 
   
 drawAxis :: Vector3 GLfloat -> [Color3 GLdouble] -> IO()
@@ -2455,23 +2636,23 @@ drawArrowN1X (p0, p1) = do
 {-|
  - KEY: draw arrow from the origin
  -}
-drawArrow3dCen ::Vector3 GLfloat -> [Color3 GLdouble] -> IO()
+drawArrow3dCen ::Vector3 GLdouble -> [Color3 GLdouble] -> IO()
 drawArrow3dCen v cl = do
   preservingMatrix $ do
-    let v0 = Vector3 1 0 0
+    let v0 = Vector3 1 0 0 :: Vector3 GLdouble
     let v1 = v
     let m = padMat3To4 $ rotToVecMat v0 v 
-    multiModelviewMat $ join m
+    multiModelviewMatD $ join m
     cylinderArrow (nr v) cl
 
-drawArrow3d ::(Vertex3 GLfloat, Vertex3 GLfloat) -> [Color3 GLdouble] -> IO()
+drawArrow3d ::(Vertex3 GLdouble, Vertex3 GLdouble) -> [Color3 GLdouble] -> IO()
 drawArrow3d (p0, p1) cl = do
   preservingMatrix $ do
     let v = p0 ➞ p1  -- vector from p0 to p1
-    let v0 = Vector3 1 0 0
-    let m = padMat3To4 $ rotToVecMat v0 v 
+    let e₁ = Vector3 1 0 0 :: Vector3 GLdouble
+    let m = padMat3To4 $ rotToVecMat e₁ v 
     translate (vec_ p0)
-    multiModelviewMat $ join m
+    multiModelviewMatD $ join m
     cylinderArrow (nr v) cl
   where
     (➞) :: (Floating a) => Vertex3 a -> Vertex3 a -> Vector3 a
@@ -2493,6 +2674,148 @@ drawArrow3dX (p0, p1) cl = do
     (➞) (Vertex3 x y z) (Vertex3 x' y' z') = Vector3 (x' - x) (y' - y) (z' - z) 
     --HEAVY TRIANGLE-HEADED RIGHTWARDS ARROW
     --Unicode: U+279E, UTF-8: E2 9E 9E
+
+{-|
+    === KEY: Draw xz-plane circle
+-}
+circlePtXZ::Vertex3 GLdouble -> Double -> Int -> [Vertex3 GLdouble]
+circlePtXZ (Vertex3 x0 y0 z0) r num =[let alpha = (pi2* fi n)/fi num in Vertex3 (rf r * cos alpha + x0) y0 (rf r *sin alpha + z0) | n <- [0..num]]
+        where
+            pi2 = 2*pi::GLdouble
+  
+{-|
+
+  KEY: elliptic circle on xz plane
+
+  @
+  @
+-}
+ellipticPtXZ::Vertex3 GLdouble -> (GLdouble, GLdouble) -> Int -> [Vertex3 GLdouble]
+ellipticPtXZ p0@(Vertex3 x0 y0 z0) (rx, rz) num = [let alpha = (2*pi* rf n)/rf num in Vertex3 (rf rx * cos alpha + x0) y0 (rf rz * sin alpha + z0) | n <- [0..num]]
+  
+{-|
+
+  KEY: elliptic circle on yz plane
+
+  @
+  @
+-}
+ellipticPtYZ::Vertex3 GLdouble -> (GLdouble, GLdouble) -> Int -> [Vertex3 GLdouble]
+ellipticPtYZ p0@(Vertex3 x0 y0 z0) (ry, rz) num = [let alpha = (2*pi* rf n)/rf num in Vertex3 x0 (rf ry * cos alpha + y0) (rf rz * sin alpha + z0) | n <- [0..num]]
+  
+{-|
+
+  KEY: ellipse rotate around y axis and around Up
+
+  @
+  @
+-}
+ellipseRot::(GLdouble, GLdouble) -> (GLdouble, GLdouble) -> Vertex3 GLdouble ->([Vertex3 GLdouble], [[GLdouble]])
+ellipseRot (rx, rz) (rotY, rotUp) p0@(Vertex3 x0 y0 z0) = (lt, m₄)
+        where
+          e₁ = [1, 0, 0]
+          v₁ = Vector3 0 1 0
+          α = rotY
+          β = rotUp
+          m₁ = v₁ `rotMat` α
+          v₂ = listToVec $ join $ m₁ `multiVec` e₁
+          vn = case v₂ `crossF` v₁ of
+                       Just v -> v
+                       Nothing -> error "v₂ v₁ can not be parallel"
+          m₂ = vn `rotMat` β
+          m₃ = m₂ ∘ m₁
+          m₄ = padMat3To4Tran m₃ (verToList p0)
+          mu m u = let w = join $ m `multiVec` verToList u in Vertex3 (head w) ((head . tail) w) (last w)
+          num = 10
+          pi2 = 2*pi::GLdouble
+          -- ls = [let alpha = (pi2*n)/num in Vertex3 (r1 * cos alpha) 0 (r2 * sin alpha) | n <- [0..num]]
+          ls = ellipticPtXZ (Vertex3 0 0 0) (rx, rz) num
+          lt = map (\v -> p0 + m₃ `mu` v) ls
+  
+cls :: [Color3 GLdouble] -> [Color3 GLdouble]
+cls = join . repeat
+
+combineColor :: [a] -> [a] -> [b] -> [(a, b)]
+combineColor cx cy cc = let cs = join $ zipWith (\p q -> [p, q]) cx cy in zip cs cc
+
+combineList :: [a] -> [a] -> [a]
+combineList cx cy = join $ zipWith (\a b -> [a, b]) cx cy
+
+drawCylinderEX :: (Vertex3 GLdouble, [Vertex3 GLdouble], [Color3 GLdouble]) -> (Vertex3 GLdouble, [Vertex3 GLdouble], [Color3 GLdouble]) -> IO()
+drawCylinderEX (p0, cx0, cc0) (p1, cx1, cc1) = do
+  let cc = cls [blue, green]
+  let ls = combineColor cx0 cx1 cc
+  let lt = zip (p0 : cx0) (cls cc0)
+  let lr = zip (p1 : cx1) (cls cc1)
+  preservingMatrix $ do
+    renderPrimitive TriangleStrip $ mapM_(\(v, c) -> do
+        color c
+        vertex v) ls
+  preservingMatrix $ do
+    renderPrimitive TriangleFan $ mapM_(\(v, c) -> do
+        color c
+        vertex v) lt
+  preservingMatrix $ do
+    renderPrimitive TriangleFan $ mapM_(\(v, c) -> do
+        color c
+        vertex v) lr
+
+
+  
+drawCylinderEllipse :: (Vertex3 GLdouble, Vertex3 GLdouble) -> [Color3 GLdouble]-> IO()
+drawCylinderEllipse (p0, p1) cl = do
+  let cc = cls cl
+  let r = 0.2
+  let leng = nr (p0 -: p1)
+  let ca = cls [magenta, blue]
+  let cb = cls [yellow, gray]
+  let d = 2.0*pi/10.0
+  let cx = [0, 0 + d .. 2*pi]
+  let (ls, _) = ellipseRot (0.2, 0.2) (0, 0) p0
+  let (lt, _) = ellipseRot (0.3, 0.2) (pi/2, pi/6) p1
+  
+  let lw = join $ zipWith (\x y -> [x, y]) lt ls
+  let lw' = zip lw cc
+
+  let ls' = p0 : ls
+  let lss = zip ls' cc
+  
+  let lt' = p1 : lt
+  let ltt = zip lt' cc
+  
+  preservingMatrix $ do
+    renderPrimitive TriangleStrip $ mapM_(\(v, c) -> do
+        color c
+        vertex v) lw'
+  preservingMatrix $ do
+    renderPrimitive TriangleFan $ mapM_(\(v, c) -> do
+        color c
+        vertex v) lss
+  preservingMatrix $ do
+    renderPrimitive TriangleFan $ mapM_(\(v, c) -> do
+        color c
+        vertex v) ltt
+  
+drawCylinder3d :: GLdouble -> (Vertex3 GLdouble, Vertex3 GLdouble) -> (Vector3 GLdouble, GLdouble) -> (Vector3 GLdouble, GLdouble) -> [Color3 GLdouble] -> IO()
+drawCylinder3d r (p0, p1) (vk0, alpha) (vk1, beta) cl = do
+  preservingMatrix $ do
+    let ca = join $ repeat [magenta, blue]
+    let cb = join $ repeat [yellow, gray]
+    let v@(Vector3 x y z) = p0 ➞ p1  -- vector from p0 to p1
+    let v0 = Vector3 0 1 0 :: Vector3 GLdouble
+    let m = padMat3To4 $ rotToVecMat v0 v 
+    translate (vec_ p0)
+    lm <- multiModelviewMatD $ join m
+    let mv = partList 4 lm
+    logFileGT "mv_xx" $ map show mv
+    -- cylinderXAxis r (rf $ nr v) cl
+    (ls, lv) <- cylinderYAxis r (rf $ nr v) (vk0, alpha) (vk1, beta) (True, True) cl
+    return ()
+  where
+    (➞) :: (Floating a) => Vertex3 a -> Vertex3 a -> Vector3 a
+    (➞) (Vertex3 x y z) (Vertex3 x' y' z') = Vector3 (x' - x) (y' - y) (z' - z) 
+    --HEAVY TRIANGLE-HEADED RIGHTWARDS ARROW
+    --Unicode: U+279E, UTF-8: E2 9E 9E
     
 drawArrowColor :: (Vertex3 GLfloat, Vertex3 GLfloat) -> [Color3 GLdouble] -> IO()
 drawArrowColor (p0, p1) cr = do 
@@ -2505,51 +2828,6 @@ drawArrowColor (p0, p1) cr = do
     where  
       l = nr $ p0 -: p1
 
-
-{-| 
-  
-   === KEY: rotate vector to other vector
-
-   * rotate v₀ to v₁ in angle θ radian around v₀ ⊗ v₁
-
-   @
-   let v0 = Vector3 1 0 0
-   let v1 = Vector3 0 0 (-1)
-   let θ  = pi/2
-   rotToVecMat v₀ v₁ θ
-   @
--}
-rotToVecMat :: (Floating a, Eq a) => Vector3 a -> Vector3 a  -> [[a]]
-rotToVecMat v₀ v₁ = rotMat vᵤ θ
-  where
-    vᵤ = case v₀ ⊗ v₁ of
-              Nothing -> uv v₀
-              -- Nothing -> error "ERROR: two vectors can not be parallel, ERROR123"
-              Just v -> uv v
-    θ = angle2Vector v₀ v₁
-
-{-|
-
-  @
-  -- 3x3  to 4x4 matrix
-
-    1 2 3
-    4 5 6
-    7 8 9
-
-    1 2 3 0
-    4 5 6 0
-    7 8 9 0
-    0 0 0 1
-  @
--}
-padMat3To4 :: (Num a) => [[a]] -> [[a]]
-padMat3To4 m = tran mx
-  where
-    m' = m ++ [[0, 0, 0]]
-    mt = tran m'
-    mx = mt ++ [[0, 0, 0, 1]]
-    
 {-|
   
   @
@@ -2560,10 +2838,10 @@ padMat3To4 m = tran mx
   cylinderArrow leng [yellow, gray]
   @
 -}
-cylinderArrow :: GLfloat -> [Color3 GLdouble] -> IO()
+cylinderArrow :: GLdouble -> [Color3 GLdouble] -> IO()
 cylinderArrow leng cl = do
   let minLen = 0.1
-  let cyRatio = 0.9 :: GLfloat
+  let cyRatio = 0.9 :: GLdouble 
   let cyLen = leng < minLen ? minLen $ rf $leng * cyRatio
   let cyRadius = cyLen * 0.01
   let coneRadius = cyRadius * 2.0
@@ -2573,6 +2851,15 @@ cylinderArrow leng cl = do
     cylinder cyRadius cyLen (True, True)  cl
     translate (Vector3 0 (rf cyLen) 0 :: Vector3 GLdouble)
     cone coneRadius coneHeigh 8 cl
+{-|
+ - KEY: draw cylinder along +x-axis from Vertex3 0 0 0
+ -}
+cylinderXAxis :: GLdouble -> GLdouble -> [Color3 GLdouble] -> IO()
+cylinderXAxis r leng cl = do
+  let cyRadius = r 
+  preservingMatrix $ do
+    rotate (-90) (Vector3 0 0 1 ::Vector3 GLdouble)
+    cylinder cyRadius leng (True, True)  cl
 
 cylinderArrowX :: GLfloat -> [Color3 GLdouble] -> IO()
 cylinderArrowX leng cl = do
@@ -2718,7 +3005,7 @@ coord = do
    cone r l n
    @
 -}
-cone :: GLfloat -> GLfloat -> Int -> [Color3 GLdouble] -> IO()
+cone :: GLdouble -> GLdouble -> Int -> [Color3 GLdouble] -> IO()
 cone r leng n cl = do
   let d = 2.0*pi/fi n
   -- let lc = [green, yellow, blue, cyan, gray, white]
@@ -2731,10 +3018,10 @@ cone r leng n cl = do
   -- (x, y, z) <- readAndParse "/tmp/tu.x" :: IO(GLfloat, GLfloat, GLfloat)
   renderPrimitive TriangleFan $ mapM_ (\(v, c) -> do
       color c
-      vertex v) $ (Vertex3 0 leng 0 :: Vertex3 GLfloat, white) : lp
+      vertex v) $ (Vertex3 0 leng 0 :: Vertex3 GLdouble, white) : lp
   renderPrimitive TriangleFan $ mapM_ (\(v, c) -> do
       color c
-      vertex v) $ (Vertex3 0 0 0 :: Vertex3 GLfloat, white) : lp
+      vertex v) $ (Vertex3 0 0 0 :: Vertex3 GLdouble, white) : lp
 
 {-|
 
@@ -2765,9 +3052,14 @@ coneX r leng n cl = do
       color c
       vertex v) $ (Vertex3 0 0 0 :: Vertex3 GLfloat, white) : lp
 
-
 vecToList3 :: Vector3 a -> [a]
 vecToList3 (Vector3 x y z) = [x, y, z]
+  
+verToList :: Vertex3 a -> [a]
+verToList (Vertex3 x y z) = [x, y, z]
+
+verToList3 :: Vertex3 a -> [a]
+verToList3 (Vertex3 x y z) = [x, y, z]
 
 vecToM4x :: Vector3 GLdouble -> [[GLdouble]]
 vecToM4x (Vector3 x y z) = [
@@ -2879,6 +3171,18 @@ getRedisXf s = do
                                     Nothing -> 0.0
     )
   
+getRedisD :: String -> IO GLdouble
+getRedisD s = do
+  bracket
+    (redisConnectDefault)
+    (redisDisconnect)
+    (\conn -> flip redisGetConn s conn <&> \x -> case x of
+                                    Just s -> case DT.readMaybe s :: Maybe GLdouble of
+                                                   Just x -> x
+                                                   Nothing -> 0.0
+                                    Nothing -> 0.0
+    )
+  
 getRedisXStr :: String -> IO String
 getRedisXStr s = do
   bracket
@@ -2969,12 +3273,6 @@ sdfCircle :: Vertex3 GLfloat -> GLfloat -> Vertex3 GLfloat -> GLfloat
 sdfCircle c r s = nr (c -: s) - r
 addy (Vertex3 x y z) = Vertex3 x (y + 0.2) z
 
-mulMat :: [[GLfloat]] -> Vertex3 GLfloat -> Vertex3 GLfloat
-mulMat cx vx = v0
-  where
-    ls = vexToList vx
-    v0 = listToVex $ join $ cx `multiVec` ls
-
 beginWindow3d :: G.Window -> IORef CameraRot -> IORef GlobalRef -> IOArray (Int, Int, Int) BlockAttr -> IO()
 beginWindow3d w refCamRot refGlobal ioArray = do
   G.makeContextCurrent $ Just w
@@ -3024,13 +3322,16 @@ saveImageFrame :: G.Window -> IOArray Int AnimaState -> IO()
 saveImageFrame w animaStateArr = do
   let anima1 = 1
   let intervalx = 0 -- larger number is slower
-  (isNext1, index1, animaState1) <- readAnimaState animaStateArr anima1 intervalx
+  (isNext1, index1, _, _, _,_,_, animaState1) <- readAnimaState animaStateArr anima1 intervalx
   let fn = "/tmp/img_" ++ show (index1 + 1000) ++ ".png"
   saveImageOpenGL w fn
   writeAnimaState animaStateArr animaState1 {animaIndex_ = index1}
   
 
-drawFinal :: G.Window -> IOArray (Int, Int, Int) BlockAttr -> RectGrid -> IO ()
+drawFinal :: G.Window
+  -> IOArray (Int, Int, Int) BlockAttr
+  -> RectGrid
+  -> IO ()
 drawFinal w arr rr = do
   showCurrBoardArr arr
   drawRectGridX rr
@@ -3054,3 +3355,64 @@ drawPolygon cx = do
                                     vertex v
                                    ) $ zip cl cx
 
+-- type BufferMap = DM.Map String (String, [String])
+-- shape = triangle, cmd = add, key=abc 
+insertBufferMap :: [String] -> BufferMap 
+insertBufferMap cx = undefined
+  where
+    s = head cx
+
+-- xx2
+cmdTable :: String -> [(String, String)]
+cmdTable  [] = [] 
+cmdTable  s = ls 
+  where
+    ls = map (\x -> let a = x !! 0; b = x !! 1 in (trim a, trim b)) $ map (splitStr "=") $ splitStr "," s
+
+addShape :: [String] -> BufferMap -> BufferMap
+addShape s bm | cmd == "add" = DM.insert key (shape, tail s) bm
+              | cmd == "del" = DM.delete key bm
+              | otherwise = error $ "ERROR: Invalid cmd=" ++ cmd
+  where
+    tb = DM.fromList $ cmdTable $ head s 
+    cmd = case DM.lookup "cmd" tb of
+                Just x -> x
+                Nothing -> error $ "Invalid format11"
+    key = case DM.lookup "key" tb of
+                Just x -> x
+                Nothing -> error $ "Invalid format22" 
+    shape = case DM.lookup "shape" tb of
+                Just x -> x
+                Nothing -> error $ "Invalid format33"
+
+readGLScriptDraw :: FilePath -> IO [[String]]
+readGLScriptDraw fn = do 
+  b <- fExist fn
+  if b then do
+      ls <- rfl fn >>= \s -> return $ filter (\x -> let x' = trim x in not $ hasPrefix "--" x' && len x' > 0) s
+      return $ filter (\x -> len x > 0) $ splitBlock ls "[[:space:]]*(===){1,}"
+    else return []
+
+updateBufferMap :: IORef GlobalRef -> FilePath -> IO()
+updateBufferMap refGlobal fpath = do
+  ls <- readGLScriptDraw fpath 
+  mapM_ (\block -> do 
+                 bufferMap <- readIORef refGlobal <&> bufferMap_
+                 let mx = let s = head block 
+                              m = DM.fromList $ cmdTable s 
+                              cmd = case DM.lookup "cmd" m of
+                                           Just x -> x
+                                           Nothing -> error "Invalid format44"
+                              key = case DM.lookup "key" m of
+                                            Just x -> x
+                                            Nothing -> error "Invalid format55"
+                              shape = case DM.lookup "shape" m of
+                                            Just x -> x
+                                            Nothing -> error "Invalid format66"
+                              ma = case cmd of 
+                                        c | c == "add" -> DM.insert key (shape, tail block) bufferMap 
+                                          | c == "del" -> DM.delete key bufferMap
+                                          | otherwise -> error "Invalid cmd99"
+                              in ma
+                 modifyIORef refGlobal (\s -> s{bufferMap_ = mx})
+                 ) ls

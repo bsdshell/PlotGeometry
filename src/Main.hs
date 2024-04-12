@@ -268,7 +268,7 @@ projnX u v = c `mu` v
    mu a w = (map . map)(*a) w
 
 
-drawArrowProj :: [(Vertex3 GLfloat, Vertex3 GLfloat)] -> (Bool, Bool, Bool) -> IO()
+drawArrowProj :: [(Vertex3 GLdouble, Vertex3 GLdouble)] -> (Bool, Bool, Bool) -> IO()
 drawArrowProj ls (xy, yz, zx) = do
     preservingMatrix $ do
       let cc = [green, blue, cyan, magenta, yellow]
@@ -618,7 +618,7 @@ mainLoop (w3d, w2d) (refCamRot3d, refCamRot2d) refGlobal refGlobalFrame animaSta
       drawArrow3dCen (Vector3 0.2 0.2 0.2) cc 
 
   when False $ do
-    ls <- rfl "./bb.x" >>= \cx -> return $ map (\x -> read x :: (Vertex3 GLfloat, Vertex3 GLfloat)) cx
+    ls <- rfl "./bb.x" >>= \cx -> return $ map (\x -> read x :: (Vertex3 GLdouble, Vertex3 GLdouble)) cx
     drawArrowProj ls (True, False, False)
 
 
@@ -663,7 +663,7 @@ mainLoop (w3d, w2d) (refCamRot3d, refCamRot2d) refGlobal refGlobalFrame animaSta
 
   when False $ do
     let cc = [green, blue, cyan, magenta, yellow]
-    ls <- rfl "./cc.x" >>= \cx -> return $ map (\x -> read x :: (Vertex3 GLfloat, Vertex3 GLfloat)) cx
+    ls <- rfl "./cc.x" >>= \cx -> return $ map (\x -> read x :: (Vertex3 GLdouble, Vertex3 GLdouble)) cx
     mapM_ (\t -> drawArrow3d t cc) ls
 
   when False $ do
