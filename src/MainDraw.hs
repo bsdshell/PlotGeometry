@@ -677,30 +677,6 @@ mainLoop (w3d, w2d) (refCamRot3d, refCamRot2d) refGlobal refGlobalFrame animaSta
     logFileGT "ang_xx=" [show $ 180/pi * ang]
     logFileGT "ang_xx1/2" [show $ 180/pi * (ang/2)]
 
---  let m =  let m1 = rotMat vk1 beta in padMat3To4Tran m1 [0, leng, 0, 1]
---  let rm =  padMat3To4Tran (matId 3) [0, -leng, 0, 1]
---
-    preservingMatrix $ do
-      rd1 <- getRedisX "r11"
-      when (rd1 == 0) $ do
-        drawCylinder3d r (p0, p1) (nv, 0) (nv, ang/2) le 
-      rd2 <- getRedisX "r22"
-      when (rd2 == 0) $ do
-        drawCylinder3d r (p1, p2) (nv, -ang/2) (nv, 0) lc
-    {--
-    preservingMatrix $ do
-      let leng = nr v01
-      let m =  let m1 = rotMat nv (pi/3) in padMat3To4Tran m1 [0, leng, 0, 1]
-      let rm =  padMat3To4Tran (matId 3) [0, -leng, 0, 1]
-      multiModelviewMatD $ join $ rm `multiMat` m 
-      drawCylinder3d r (p0, p1) (nv, 0) (nv, 0) lc
-    -- drawCylinder3d r (p1, p2) (nv, 0) (nv, 0) ld
-    --}
-    preservingMatrix $ do
-      drawArrow3dX (p1, p1 +: nv) [red, blue]
-      drawArrow3dX (p2, p2 +: nv) [cyan, green]
-      drawArrow3dX (p0, p0 +: nv) [gray, white]
-
   when True $ do
     argStr <- readIORef refGlobal <&> argStr_
     ls <- null argStr ? readGLScriptDraw fpath $ let arg = parseArg argStr in readGLScriptDraw (fpath_ arg)
@@ -843,46 +819,6 @@ mainLoop (w3d, w2d) (refCamRot3d, refCamRot2d) refGlobal refGlobalFrame animaSta
     preservingMatrix $ do 
       let cc = [cyan, magenta, yellow]
       drawArrowX (Vertex3 0.1 0.1 0, Vertex3 (-0.3) 0.5 0)    
-
-  when False $ do
-    let width = 0.3
-    let height = 0.2
-    delta <- getRedisXf "delta" <&> rf
-    str <- getRedisXStr "str"
-    let s = DT.readMaybe str :: (Maybe [GLfloat])
-    let ls = fromMaybe [] s
-    -- n = len ls > 0 ? last ls $ 10
-    n <- getRedisXf "n" <&> rf
-
-    let anima1 = 6
-    xx <- getRedisX "int"
-    let interval = xx
-    -- (isNext1, index1, animaState1) <- readAnimaState animaStateArr anima1 interval
-    (_, index1, _, _, animaState1) <- readAnimaState animaStateArr anima1 interval
-    let del = pi/100
-    let lv = [[Vertex3 (1/n*x) (1/n*y) 0 | x <- [0.0..n]]| y <- [0.0..n]] :: [[Vertex3 GLfloat]]
-    renderPrimitive Points $ mapM_(\v@(Vertex3 x y z) -> do
--- /Users/aaa/myfile/bitbucket/tmp/xx_6177.x
-      let dl = sdfRect3d (Vertex3 0.2 0.3 0.4) v False
-      case dl of
-         -- sd | abs sd <= delta -> do color yellow; vertex (let m = rotz $ (del * rf index1) in mulMat m v);
-         sd | abs sd <= delta -> do
-              let m = rotx $ (del * rf index1)
-              color magenta; vertex $ mulMat m $ v;
-              color yellow;  vertex $ mulMat m $ nx_1 v;
-              color blue;    vertex $ mulMat m $ nx_2 v;
-              color cyan;    vertex $ mulMat m $ nx_12 v;
-            --  | sd > 0          -> do color gray;    vertex v; vertex $ nx_1 v; vertex $ nx_2 v; vertex $ nx_12 v;
-            --  | otherwise       -> do color white;   vertex v; vertex $ nx_1 v; vertex $ nx_2 v; vertex $ nx_12 v;
-            | otherwise -> return ()
-     ) $ join lv
-
-
-    if index1 >= 200 then do
-      writeAnimaState animaStateArr animaState1{animaIndex_ = 0}
-    else do
-      writeAnimaState animaStateArr animaState1
-
   drawDot (Vertex3 0 0 0)
   endWindow2d w2d
 

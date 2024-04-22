@@ -2482,28 +2482,58 @@ rotMat4Tup k θ = (m4, join m4)
 
    * rotate v₀ to v₁ in angle θ radian around v₀ ⊗ v₁
 
+   * NOTE: special cases, if v₀ and v₁ linear independent, 
+
    @
+   if v₀ and v₁ linear independent,
+
+   > save direction, zero degree
+   => matId 3
+   > opposive direction, 180 degree
+   =>
+     -1 0  0
+     0  -1 0
+     0  0  1
+
    let v0 = Vector3 1 0 0
    let v1 = Vector3 0 0 (-1)
    let θ  = pi/2
    rotToVecMat v₀ v₁ θ
    @
 -}
-rotToVecMat :: (Floating a, Eq a) => Vector3 a -> Vector3 a  -> [[a]]
-rotToVecMat v₀ v₁ = rotMat vᵤ θ
+rotToVecMat :: (Floating a, Eq a, Ord a) => Vector3 a -> Vector3 a  -> [[a]]
+rotToVecMat v₀ v₁ = m
   where
-    vᵤ = case v₀ ⊗ v₁ of
-              Nothing -> v₀
-              -- Nothing -> error "ERROR: two vectors can not be parallel, ERROR123"
-              Just v -> v
+    epsilon = 1e-12
+    m = case v₀ ⊗ v₁ of
+              Nothing -> let θ = angle2Vector v₀ v₁ in abs θ < epsilon ? matId 3 $ out (\a b -> a == b ? (a <= 2 ? (-1) $ 1) $ 0) [1..3] [1..3]
+              -- Nothing -> error $ "ERROR 1133: two vectors can not be parallel"
+              Just v -> rotMat v θ
     θ = angle2Vector v₀ v₁
 
-    
+{-|
+  KEY: for debug only
+-}
+rotToVecMatX :: Vector3 GLdouble -> Vector3 GLdouble  -> IO [[GLdouble]]
+rotToVecMatX v₀ v₁ = m
+  where
+    epsilon = 1e-12
+    m = case v₀ ⊗ v₁ of
+              -- Nothing -> let θ = angle2Vector v₀ v₁ in abs θ < epsilon ? matId 3 $ out (\a b -> a == b ? (a <= 2 ? (-1) $ 1) $ 0) [1..3] [1..3]
+              Nothing -> do
+                         logFileGT "ERROR1133" [show v₀ ++ " " ++ show v₁]
+                         error $ "ERROR 1133: two vectors can not be parallel => " ++ show v₀ ++ " " ++ show v₁
+              Just v -> return $ rotMat v θ
+    θ = angle2Vector v₀ v₁
+
 mulMat :: [[GLfloat]] -> Vertex3 GLfloat -> Vertex3 GLfloat
 mulMat cx vx = v0
   where
     ls = vexToList vx
     v0 = listToVex $ join $ cx `multiVec` ls
+
+translateMap :: Vector3 GLdouble -> [Vertex3 GLdouble] -> [Vertex3 GLdouble]
+translateMap  v = map (+: v)
   
 rotVerMap::[[GLdouble]] -> [Vertex3 GLdouble] -> Vertex3 GLdouble -> [Vertex3 GLdouble]
 rotVerMap m cx p0 = map (\w -> let u = lv $ join $ m ∘ mt (w - p0) in u + p0) cx
@@ -2515,7 +2545,10 @@ multiVertex :: [[GLdouble]] -> Vertex3 GLdouble -> Vertex3 GLdouble
 multiVertex m v = listToVer $ join $ m `multiVec` vs
   where
     vs = verToList v
+  
+mv = multiVertex
 
+  
 {-|
 
   @
@@ -2759,8 +2792,6 @@ drawCylinderEX (p0, cx0, cc0) (p1, cx1, cc1) = do
     renderPrimitive TriangleFan $ mapM_(\(v, c) -> do
         color c
         vertex v) lr
-
-
   
 drawCylinderEllipse :: (Vertex3 GLdouble, Vertex3 GLdouble) -> [Color3 GLdouble]-> IO()
 drawCylinderEllipse (p0, p1) cl = do
@@ -2782,7 +2813,6 @@ drawCylinderEllipse (p0, p1) cl = do
   
   let lt' = p1 : lt
   let ltt = zip lt' cc
-  
   preservingMatrix $ do
     renderPrimitive TriangleStrip $ mapM_(\(v, c) -> do
         color c
@@ -3183,8 +3213,8 @@ getRedisD s = do
                                     Nothing -> 0.0
     )
   
-getRedisXStr :: String -> IO String
-getRedisXStr s = do
+getRedisStr :: String -> IO String
+getRedisStr s = do
   bracket
     (redisConnectDefault)
     (redisDisconnect)
