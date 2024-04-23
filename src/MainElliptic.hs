@@ -696,8 +696,8 @@ isColinearXY2d (Vertex3 x0 y0 z0) (Vertex3 x1 y1 z1) (Vertex3 x2 y2 z2) = (dx ==
   @
 
 -}
-detVerProj :: (Show a, Num a) => (Int, Int, Int) -> Vertex3 a -> Vertex3 a -> Vertex3 a -> a
-detVerProj t@(a, b, c) p0@(Vertex3 x0 y0 z0) p1@(Vertex3 x1 y1 z1) p2@(Vertex3 x2 y2 z2)= dx
+detVerProj :: (Show a, Num a) => (Int, Int, Int) -> (Vertex3 a, Vertex3 a, Vertex3 a) -> a
+detVerProj t@(a, b, c) (p0@(Vertex3 x0 y0 z0), p1@(Vertex3 x1 y1 z1), p2@(Vertex3 x2 y2 z2))= dx
   where
     em = " "
     sw x = show x
@@ -709,7 +709,25 @@ detVerProj t@(a, b, c) p0@(Vertex3 x0 y0 z0) p1@(Vertex3 x1 y1 z1) p2@(Vertex3 x
                 | t ^._2 == 0 -> det2 [[x01, z01], [x12, z12]]  -- project on y-plane
                 | t ^._3 == 0 -> det2 [[x01, y01], [x12, y12]]  -- project on z-plane
                 | otherwise -> error $ "ERROR333: detVerProj, invaid input " ++ cat' [sw t, sw p0, sw p1, sw p2]
-  
+{-|
+
+  KEY:
+  * Project three pts 'Vertex3 a' on x-plane, y-plane and z-plane
+  * Compute the determinants of three pts on x-plane, y-plane, z-plane
+
+  @
+  ls = [(Vertex3 1 2 3, Vertex3 2 1 0, Vertex3 2 1 3)]
+  let lt = map (\t -> let epsilon = 1e-12 in detVerProjXYZ t epsilon) ls
+  @
+-}
+detVerProjXYZ :: (Ord a, Show a, Num a) => (Vertex3 a, Vertex3 a, Vertex3 a) -> a -> (a, a, a)
+detVerProjXYZ t@(p0, p1, p2) epsilon = (f x, f y, f z)
+  where
+    f x = abs x <= epsilon ? 0 $ x
+    x = detVerProj (0, 1, 1) t
+    y = detVerProj (1, 0, 1) t
+    z = detVerProj (1, 1, 0) t
+   
 
 {-|
   KEY: check whether three pts are in counter clockwise or not, check ccw
@@ -940,6 +958,14 @@ assertF :: Bool -> String -> IO()
 assertF b s = do
   unless b $ do
     error s
+
+{-|
+  KEY: list to tuple3
+-}
+toTuple3 :: [a] -> Maybe (a, a, a)
+toTuple3 [a, b, c] = Just (a, b, c)
+toTuple3  _        = Nothing
+
   
 ellipticThreePts :: (Vertex3 GLdouble, Vertex3 GLdouble, Vertex3 GLdouble) -> GLdouble -> Int -> IO [Vertex3 GLdouble]
 ellipticThreePts (p0x', p1x', p2x') r num = do
@@ -956,12 +982,12 @@ ellipticThreePts (p0x', p1x', p2x') r num = do
                              in m
                       | otherwise -> matId 3
 
-  logFileMat "matYZ" matYZ
+  -- logFileMat "matYZ" matYZ
   let matFlipY = case isCCWXY (p0x', p1x', p2x') of
                         Just x -> x ? out (\a b -> a == b && a == 2 ? (-1) $ (a == b ? 1 $ 0)) [1..3] [1..3] $ matId 3
                         Nothing -> matId 3
 
-  logFileMat "matFlipY" matFlipY
+  -- logFileMat "matFlipY" matFlipY
   -- let flipY v = matId 3
   {--  
   let mm = matId 3
@@ -1179,12 +1205,16 @@ ellipticThreePtsX2 (p0x', p1x', p2x') r num = do
                         Just x -> x ? out (\a b -> a == b && a == 2 ? (-1) $ (a == b ? 1 $ 0)) [1..3] [1..3] $ matId 3
                         Nothing -> matId 3
 
-  logFileMat "matYZxx" matYZ
-  logFileMat "matFlipYxx" matFlipY
+  -- logFileMat "matYZxx" matYZ
+  -- logFileMat "matFlipYxx" matFlipY
   
   -- let flipY v = matId 3
+  {--  
   let mm = matFlipY `multiMat` matYZ
   let mmr = matYZ `multiMat` matFlipY
+  --}  
+  let mm = matId 3
+  let mmr = matId 3
 
   -- let flipY v = matId 3
   let p0x = multiVertex mm p0x'
@@ -1539,10 +1569,10 @@ mainLoop (w3d, w2d) (refCamRot3d, refCamRot2d) refGlobal refGlobalFrame animaSta
       -- 4 5 6 7
       -- 4 5 6
       --   5 6 7
-      -- let pts = [let r = 0.2; alpha = 2*pi/20; x = r * cos (alpha * d); y = d * 0.01; z = r * sin (alpha * d); in Vertex3 x y z | d <- [0..20]]
-      -- logFileGT "ptsxx" [show pts]
-      -- let pts = [let r = 0.2; alpha = 2*pi/20; x = r * cos (alpha * d); y = r * sin (alpha * d); z = d * 0.01 in Vertex3 x y z | d <- [0..60]]
-      let pts = [let r = 0.2; alpha = 2*pi/20; x = d * 0.01; y = r * cos (alpha * d); z = r * sin (alpha * d); in Vertex3 x y z | d <- [0..60]]            
+      let pts = [let r = 0.2; alpha = 2*pi/20; x = r * cos (alpha * d); y = r * sin (alpha * d) * cos (alpha * d); z = r * sin (alpha * d); in Vertex3 x y z | d <- [-60..60]]
+      -- let pts = [let r = 0.2; alpha = 2*pi/20; x = r * cos (alpha * d); y = d * 0.01; z = r * sin (alpha * d); in Vertex3 x y z | d <- [-60..60]]
+      -- let pts = [let r = 0.2; alpha = 2*pi/20; x = r * cos (alpha * d); y = r * sin (alpha * d); z = d * 0.01 in Vertex3 x y z | d <- [-60..60]]
+      -- let pts = [let r = 0.2; alpha = 2*pi/20; x = d * 0.01; y = r * cos (alpha * d); z = r * sin (alpha * d); in Vertex3 x y z | d <- [-60..60]]            
       -- let ls = take (len pts - 1) $ listSlide (pts ++ pts) 3
               {--
       let matFlipYZ = [
@@ -1552,16 +1582,14 @@ mainLoop (w3d, w2d) (refCamRot3d, refCamRot2d) refGlobal refGlobalFrame animaSta
               ]
               --}
       let matFlipYZ = matId 3
-
       let pts' = rotVerMap matFlipYZ pts (Vertex3 0 0 0)
 
-      
-      let toT cx@(a:b:c:_) = case length cx of
-                        x | x == 3 -> (a, b, c)
-                          | otherwise -> error "List Invalid length"
-
-      
       let ls = listSlide pts' 3
+      let ls' = map fromJust $ filter (/= Nothing) $ map toTuple3 ls
+      let lv = map (\t -> let epsilon = 1e-12 in (detVerProjXYZ t epsilon, t)) ls'
+      let lx = map (\((x, y, z), ps) -> x == 0 || y == 0 || z == 0 ? ps $ (0, 0, 0)) lv
+      logFileGT "lvxx" $ map show lv
+      logFileGT "lxxx" $ map show lx
       let num = 4
       lt <- mapM (\(a:b:c:_) -> do
                     ellipticThreePtsX2 (a, b, c) r num
