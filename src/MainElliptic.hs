@@ -3,6 +3,7 @@
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE LambdaCase #-}
 
 -- {-# LANGUAGE CPP #-}
 -- {-# LANGUAGE CPP #-}
@@ -787,7 +788,7 @@ drawCylinderEllipseX (r0, p0, v0, c0) (r1, p1, v1, c1) cc isShown = do
                         in ellipseRot (majorAxis, minorAxis) (angX, angUp) p1
     let cx0' = p0 : cx0
     let cx1' = p1 : cx1
-    let cy = combineList cx0 cx1
+    let cy = catVList cx0 cx1
     when isShown $ do
       drawPrimitiveX TriangleFan cx0' c0
       drawPrimitiveX TriangleFan cx1' c1
@@ -841,7 +842,7 @@ drawCylinder3dX r (p0, p1, p2) cl = do
       -- let cx0' = map (\v -> lv $ join $ m ∘ mt v) cx0
       let t0@(sx0, sx0')= let s = rotVerMap m cx0 p0 in (s, p0:s)
       let t1@(sx1, sx1')= let s = rotVerMap m cx1 p1 in (s, p1:s)
-      let cy' = combineList sx0 sx1
+      let cy' = catVList sx0 sx1
       
       drawArrow3d (p1, p1 +: (0.5 *: uv k)) [cyan]
       
@@ -854,7 +855,7 @@ drawCylinder3dX r (p0, p1, p2) cl = do
 
       -- let cirls = map (\(Vertex3 x y z) -> [x, y, z, 1]) $ ellipticPtXZ (Vertex3 0 0 0) (r, r/cos (pi/2 - θ)) 10
       let cirls = map (\(Vertex3 x y z) -> [x, y, z, 1]) $ ellipticPtXZ (Vertex3 0 0 0) (r, r) 10
-      let eccx =  map (\x -> let ls = join $ m₄ `multiVec` x in (listToVer . init) ls) cirls
+      let eccx =  map (\x -> let ls = m₄ `multiVecL` x in (listToVer . init) ls) cirls
       let eccx' = rotVerMap m₁ eccx p1
 
       -- drawPrimitiveX TriangleFan cx11 (cls [red, white])
@@ -863,7 +864,7 @@ drawCylinder3dX r (p0, p1, p2) cl = do
   
       drawPrimitiveX TriangleFan sx0' c0
       drawPrimitiveX TriangleFan sx1' c1
-      drawPrimitiveX TriangleStrip (combineList sx0 cxx) (cls cc)
+      drawPrimitiveX TriangleStrip (catVList sx0 cxx) (cls cc)
     when True $ do
       let rx = 0.1
       let rz = 0.2
@@ -1033,7 +1034,7 @@ ellipticThreePts (p0x', p1x', p2x') r num = do
   when (b1 /= 0) $ do
     drawPrimitiveX TriangleFan (c0 : cx0) [green, white]
     drawPrimitiveX TriangleFan (c1 : cx1) [red, white]
-    drawPrimitiveX TriangleStrip (combineList cx0 cx1) (cls cc)
+    drawPrimitiveX TriangleStrip (catVList cx0 cx1) (cls cc)
 
   let m = rotToVecMat vx v01  
   let cx0' = rotVerMap m (c0:cx0) vz
@@ -1044,7 +1045,7 @@ ellipticThreePts (p0x', p1x', p2x') r num = do
   when (b2 /= 0) $ do
     drawPrimitiveX TriangleFan cx0' [white, blue]
     drawPrimitiveX TriangleFan cx1' [white, yellow]
-    drawPrimitiveX TriangleStrip (combineList (tail cx0') (tail cx1')) [white, gray]  
+    drawPrimitiveX TriangleStrip (catVList (tail cx0') (tail cx1')) [white, gray]  
 
   -- move cylinder x-axis to v12
   let m₁ = rotToVecMat vx v12
@@ -1060,7 +1061,7 @@ ellipticThreePts (p0x', p1x', p2x') r num = do
     let (!) = (!!)
     drawPrimitiveX TriangleFan q11 [white, cyan]
     drawPrimitiveX TriangleFan q22 [white, red]
-    drawPrimitiveX TriangleStrip (combineList (tail q11) (tail q22)) [white, blue]
+    drawPrimitiveX TriangleStrip (catVList (tail q11) (tail q22)) [white, blue]
   
     drawArrow3d (head q11, head q22) c2
     let b = isParallelPlane (q11 ! 0, q11 ! 1, q11 ! 2) (q22 ! 0, q22 ! 1, q22 ! 2)
@@ -1078,7 +1079,7 @@ ellipticThreePts (p0x', p1x', p2x') r num = do
   when (b4 /= 0) $ do  
     drawPrimitiveX TriangleFan cx00' [white, green]
     drawPrimitiveX TriangleFan cx11' [white, red]
-    drawPrimitiveX TriangleStrip (combineList (tail cx00') (tail cx11')) (cls [blue, red])
+    drawPrimitiveX TriangleStrip (catVList (tail cx00') (tail cx11')) (cls [blue, red])
   -- transform v12 to new position with matrix m₂
   -- b5 <- getRedisX "b5"
   let q11' = rotVerMap m₂ q11 vz
@@ -1087,7 +1088,7 @@ ellipticThreePts (p0x', p1x', p2x') r num = do
   when (b5 /= 0) $ do
     drawPrimitiveX TriangleFan q11' [blue, magenta]
     drawPrimitiveX TriangleFan q22' [blue, yellow]
-    drawPrimitiveX TriangleStrip (combineList (tail q11') (tail q22')) (cls [white, yellow])
+    drawPrimitiveX TriangleStrip (catVList (tail q11') (tail q22')) (cls [white, yellow])
   assertF (len q11' == num + 2) "len q11' == 12 ?"
   assertF (len q22' == num + 2) "len q22' == 12 ?"
   
@@ -1116,7 +1117,7 @@ ellipticThreePts (p0x', p1x', p2x') r num = do
   when (b6 /= 0) $ do
     drawPrimitiveX TriangleFan q111 [white, blue]
     drawPrimitiveX TriangleFan q222 [cyan, white]
-    drawPrimitiveX TriangleStrip (combineList (tail q111) (tail q222)) (cls [green, red])
+    drawPrimitiveX TriangleStrip (catVList (tail q111) (tail q222)) (cls [green, red])
   logFileGT "pxx1" [show $ head q111]
   logFileGT "pxx2" [show $ head q222]
   let x1 = head q111
@@ -1144,21 +1145,21 @@ ellipticThreePts (p0x', p1x', p2x') r num = do
   b7 <- getRedisX "b7"
   when (b7 /= 0) $ do
     drawPrimitiveX TriangleFan ax111' [color1, color2]
-    drawPrimitiveX TriangleStrip (combineList (tail q222) (tail ax111')) (cls [color2, red])
-    drawPrimitiveX TriangleStrip (combineList (tail ax00') (tail ax111')) (cls [color3, blue])
+    drawPrimitiveX TriangleStrip (catVList (tail q222) (tail ax111')) (cls [color2, red])
+    drawPrimitiveX TriangleStrip (catVList (tail ax00') (tail ax111')) (cls [color3, blue])
 
-  let mr₃ = rotMat vy (ang)
+  let mr₃ = rotMat vy ang
   b8 <- getRedisX "b8"
   when (b8 /= 0) $ do
-    let dx1 = combineList (tail q222) (tail ax111')
-    let dx0 = combineList (tail ax00') (tail ax111')
+    let dx1 = catVList (tail q222) (tail ax111')
+    let dx0 = catVList (tail ax00') (tail ax111')
     let dx1' = rotVerMap mr₃ dx1 vz
     let dx0' = rotVerMap mr₃ dx0 vz      
     drawPrimitiveX TriangleStrip dx1' (cls [color2, green])
     drawPrimitiveX TriangleStrip dx0' (cls [color3, magenta])
 
-  let dx1 = combineList (tail q222) (tail ax111')
-  let dx0 = combineList (tail ax00') (tail ax111')
+  let dx1 = catVList (tail q222) (tail ax111')
+  let dx0 = catVList (tail ax00') (tail ax111')
   logFileGT "lenax111'" [show $ len ax111']
   logFileGT "lenax00'" [show $ len ax00']
   logFileGT "lenq222" [show $ len q222]
@@ -1189,37 +1190,10 @@ ellipticThreePts (p0x', p1x', p2x') r num = do
 ellipticThreePtsX2 :: (Vertex3 GLdouble, Vertex3 GLdouble, Vertex3 GLdouble) -> GLdouble -> Int -> IO [Vertex3 GLdouble]
 ellipticThreePtsX2 (p0x', p1x', p2x') r num = do
   let epsilon = 1e-12
-  let tz@(b, deg) = let up = Vector3 0 0 1 in isCCWUp (p0x', p1x', p2x') up
-  logFileGT "xyplane" [show tz]
 
-  let matYZ = case not b && abs (pi/2 - deg) < epsilon of
-                   b | b -> let m = [
-                                      [0, 0, 1],
-                                      [0, 1, 0],
-                                      [1, 0, 0]
-                                    ]
-                             in m
-                      | otherwise -> matId 3
-    
-  let matFlipY = case isCCWXY (p0x', p1x', p2x') of
-                        Just x -> x ? out (\a b -> a == b && a == 2 ? (-1) $ (a == b ? 1 $ 0)) [1..3] [1..3] $ matId 3
-                        Nothing -> matId 3
-
-  -- logFileMat "matYZxx" matYZ
-  -- logFileMat "matFlipYxx" matFlipY
-  
-  -- let flipY v = matId 3
-  {--  
-  let mm = matFlipY `multiMat` matYZ
-  let mmr = matYZ `multiMat` matFlipY
-  --}  
-  let mm = matId 3
-  let mmr = matId 3
-
-  -- let flipY v = matId 3
-  let p0x = multiVertex mm p0x'
-  let p1x = multiVertex mm p1x'
-  let p2x = multiVertex mm p2x'  
+  let p0x = p0x'
+  let p1x = p1x'
+  let p2x = p2x'  
   let p0 = p0x + (-p0x)
   let p1 = p1x + (-p0x)
   let p2 = p2x + (-p0x)
@@ -1252,7 +1226,7 @@ ellipticThreePtsX2 (p0x', p1x', p2x') r num = do
   let cx1' = rotVerMap m (c1:cx1) vz
   
   -- move cylinder x-axis to v12
-  _ <- rotToVecMatX vx v12
+  -- _ <- rotToVecMatX vx v12
   let m₁ = rotToVecMat vx v12
   let s1 = Vertex3 0 0 0
   let s2 = Vertex3 (nr v12) 0 0
@@ -1262,7 +1236,7 @@ ellipticThreePtsX2 (p0x', p1x', p2x') r num = do
   let q22 = map (+: v01) $ rotVerMap m₁ (s2 : q2) vz
   
   -- v01 to vy = Vector3 0 1 0
-  _ <- rotToVecMatX v01 vy
+  -- _ <- rotToVecMatX v01 vy
   let m₂ = rotToVecMat v01 vy
   let cx00' = rotVerMap m₂ cx0' vz
   let cx11' = rotVerMap m₂ cx1' vz
@@ -1284,55 +1258,53 @@ ellipticThreePtsX2 (p0x', p1x', p2x') r num = do
   -- let ang = let a = angle2Vector vx vr in a
   let ang = let a = angle2Vector vx vr in ve_3 vr > 0 ? 2*pi - a $ a
   -- let ang = let a = angle2Vector vx vr in a
-  logFileGT "angxx" [show ang]
-  logFileGT "vrxx" [show vr]
+  -- logFileGT "angxx" [show ang]
+  -- logFileGT "vrxx" [show vr]
   -- rotate around Vector3 0 1 0 in ang, onto plane xy plane
   let m₃ = rotMat vy (-ang)
   let ax00' = rotVerMap m₃ cx00' vz
   let ax11' = rotVerMap m₃ cx11' vz
   let q111 = rotVerMap m₃ q11' vz
   let q222 = rotVerMap m₃ q22' vz
-  b6 <- getRedisX "b6"
+  -- b6 <- getRedisX "b6"
 
-  logFileGT "pxx1" [show $ head q111]
-  logFileGT "pxx2" [show $ head q222]
+  -- logFileGT "pxx1" [show $ head q111]
+  -- logFileGT "pxx2" [show $ head q222]
   let x1 = head q111
   let x2 = head q222
-  let vxx = uv $ x2 -: x1
+  let vxx = x2 -: x1
 
   let angHalf = let a = angle2Vector vy vxx in a/2
-  logFileGT "angHalfxx" [show angHalf]
+  -- logFileGT "angHalfxx" [show angHalf]
   let angRot = pi/2 + angHalf
-  logFileGT "angRotxx" [show angRot]  
+  -- logFileGT "angRotxx" [show angRot]  
   let m₄ = rotMat (Vector3 0 0 1) angRot
-  let ellipicCirc = rotVerMap m₄ ax11' (head ax11')
-  -- drawPrimitiveX TriangleFan ellipicCirc [color3, color1]
+  -- let ellipicCirc = rotVerMap m₄ ax11' (head ax11')
   let rx = r
   let rz = r
   -- if angRot > pi/2, then cos angRot < 0
   let majorAxis = abs $ rz /cos angRot
-  let ax0 = ellipticPtXZ (Vertex3 0 0 0) (rz, rz) num
-  let ax1 = ellipticPtXZ (Vertex3 0 0 0) (majorAxis, rz) num
+  let ax0 = ellipticPtXZ vz (rz, rz) num
+  let ax1 = ellipticPtXZ vz (majorAxis, rz) num
   let cen = head ax11'
   let pts' = cen:map (+cen) ax1
   let ax111' = rotVerMap m₄ pts' cen
 
-
-  let mr₃ = rotMat vy (ang)
+  let mr₃ = rotMat vy ang
 
   -- when (b9 /= 0) $ do
-  let dx1 = combineList (tail q222) (tail ax111')
-  let dx0 = combineList (tail ax00') (tail ax111')
-  let dx1' = rotVerMap mr₃ dx1 vz
-  let dx0' = rotVerMap mr₃ dx0 vz
+  -- let dx1 = catVList (tail q222) (tail ax111')
+  -- let dx0 = catVList (tail ax00') (tail ax111')
+  -- let dx1' = rotVerMap mr₃ dx1 vz
+  -- let dx0' = rotVerMap mr₃ dx0 vz
   let retx = rotVerMap mr₃ ax111' vz
 
   let mr₂ = rotToVecMat vy v01
   -- translate back to p0
   -- let dx11' = map (multiVertex matFlipY) $ map (+p0x) $ rotVerMap mr₂ dx1' vz
-  let dx11' = map (\x -> multiVertex mmr $ (+) p0x x) $ rotVerMap mr₂ dx1' vz
-  let dx00' = map (\x -> multiVertex mmr $ (+) p0x x) $ rotVerMap mr₂ dx0' vz
-  let retx' = map (\x -> multiVertex mmr $ (+) p0x x) $ rotVerMap mr₂ retx vz
+  -- let dx11' = map (+ p0x) $ rotVerMap mr₂ dx1' vz
+  -- let dx00' = map (+ p0x) $ rotVerMap mr₂ dx0' vz
+  let retx' = map (+ p0x) $ rotVerMap mr₂ retx vz
 
   return $ tail retx'
 
@@ -1522,7 +1494,7 @@ mainLoop (w3d, w2d) (refCamRot3d, refCamRot2d) refGlobal refGlobalFrame animaSta
     let q₂ = Vertex3 0.1 0.1 (-0.1)
     let qv = q₁ -: q₂
     (cx0, cx1, _) <- drawCylinderEllipseX t0 t1 cc False
-    -- let cy = combineList cx0 cx1
+    -- let cy = catVList cx0 cx1
     when False $ do
       drawPrimitiveX TriangleFan (p0:cx0) [green, white]
       drawPrimitiveX TriangleFan (p1:cx1) [red, blue]
@@ -1569,38 +1541,38 @@ mainLoop (w3d, w2d) (refCamRot3d, refCamRot2d) refGlobal refGlobalFrame animaSta
       -- 4 5 6 7
       -- 4 5 6
       --   5 6 7
-      let pts = [let r = 0.2; alpha = 2*pi/20; x = r * cos (alpha * d); y = r * sin (alpha * d) * cos (alpha * d); z = r * sin (alpha * d); in Vertex3 x y z | d <- [-60..60]]
+      let pts = [let r = 0.2; α = 2*pi/20;
+                     t = α * d
+                     x = r * (1 + cos t);
+                     y = r * sin t;
+                     z = 2*r * sin (t/2);
+                 in Vertex3 x y z | d <- [-60..60]]
+      -- let pts = [let r = 0.2; alpha = 2*pi/20; x = r * cos (alpha * d); y = 1.2*r * sin (alpha * d) * cos (alpha * d); z = r * sin (alpha * d); in Vertex3 x y z | d <- [-60..60]]
       -- let pts = [let r = 0.2; alpha = 2*pi/20; x = r * cos (alpha * d); y = d * 0.01; z = r * sin (alpha * d); in Vertex3 x y z | d <- [-60..60]]
       -- let pts = [let r = 0.2; alpha = 2*pi/20; x = r * cos (alpha * d); y = r * sin (alpha * d); z = d * 0.01 in Vertex3 x y z | d <- [-60..60]]
       -- let pts = [let r = 0.2; alpha = 2*pi/20; x = d * 0.01; y = r * cos (alpha * d); z = r * sin (alpha * d); in Vertex3 x y z | d <- [-60..60]]            
       -- let ls = take (len pts - 1) $ listSlide (pts ++ pts) 3
-              {--
-      let matFlipYZ = [
-                [0, 0, 1],
-                [0, 1, 0],
-                [1, 0, 0]
-              ]
-              --}
-      let matFlipYZ = matId 3
-      let pts' = rotVerMap matFlipYZ pts (Vertex3 0 0 0)
+
+      let pts' = pts
 
       let ls = listSlide pts' 3
+      {--      
       let ls' = map fromJust $ filter (/= Nothing) $ map toTuple3 ls
       let lv = map (\t -> let epsilon = 1e-12 in (detVerProjXYZ t epsilon, t)) ls'
       let lx = map (\((x, y, z), ps) -> x == 0 || y == 0 || z == 0 ? ps $ (0, 0, 0)) lv
       logFileGT "lvxx" $ map show lv
       logFileGT "lxxx" $ map show lx
+      --}  
       let num = 4
       lt <- mapM (\(a:b:c:_) -> do
                     ellipticThreePtsX2 (a, b, c) r num
             ) ls
-      -- let lr = listSlide (lt ++ take 1 lt) 2
-      let lr = listSlide lt 2
       mapM_ (\(a:b:_) -> do
-                let la = combineList a b
+                let la = catVList a b
                 drawPrimitiveX TriangleStrip la [color1, gray]
-                ) lr
-  
+                ) $ listSlide lt 2
+
+      drawSphereNX 20 20 0.4 False [gray, color1]
     when False $ do
       let p0 = Vertex3 0 0 0
       let p1 = Vertex3 0.2 0.2 0
@@ -1619,7 +1591,7 @@ mainLoop (w3d, w2d) (refCamRot3d, refCamRot2d) refGlobal refGlobalFrame animaSta
       let r = 0.01
       let s0 = ellipticPtYZ c0 (r, r) num
       let s1 = ellipticPtYZ c1 (r, r) num
-      let ss = combineList s0 s1
+      let ss = catVList s0 s1
       drawPrimitiveX TriangleStrip ss [white, color1]
       let m = rotToVecMat vx v01
       logFileGT "m33" [show m]
@@ -1884,14 +1856,14 @@ mainLoop (w3d, w2d) (refCamRot3d, refCamRot2d) refGlobal refGlobalFrame animaSta
       mapM_ (\(c, v) -> do 
                   drawDotXX c v 0.02
            ) $ zip co pts 
-  
-  r2 <- redisGet "r2" <&> \s -> case s of
-                                  Just x -> read x :: Bool 
-                                  Nothing -> False
 
-  rls <- redisGet "rls" <&> \s -> case s of
-                                  Just x -> read x :: [GLfloat] 
-                                  Nothing -> [0.02, 0.02 + 0.02 .. 0.1] 
+  r2 <- redisGet "r2" <&> \case
+                          Just x -> read x :: Bool 
+                          Nothing -> False
+
+  rls <- redisGet "rls" <&> \case
+                            Just x -> read x :: [GLfloat] 
+                            Nothing -> [0.02, 0.02 + 0.02 .. 0.1]  
   when r2 $ do
     let ax = [0.02, 0.02 + 0.02 .. 0.90] :: [GLdouble] 
     let cx = map (\y -> Vertex3 0 y 0) ax 

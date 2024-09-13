@@ -1170,8 +1170,8 @@ keyBoardCallBack3d refCamRot refGlobalRef ioArray window key scanCode keyState m
                          -- multiModelviewMat ls
                          let lsY = vecToList3 vecYCF ++ [0]
                          let lsZ = vecToList3 vecZCF ++ [0]
-                         let vy3 = (listToVec . join) $ mm `multiVec` lsY
-                         let vz3 = (listToVec . join) $ mm `multiVec` lsZ
+                         let vy3 = listToVec $ mm `multiVecL` lsY
+                         let vz3 = listToVec $ mm `multiVecL` lsZ
 
                          modifyIORef refCamRot (\s -> s{coordFrameMat_ = let m = coordFrameMat_ s in mm `multiMat` m})
                          modifyIORef refCamRot (\s -> s{coordFrame_ = (vecXCF, vy3, vz3)})
@@ -1197,8 +1197,8 @@ keyBoardCallBack3d refCamRot refGlobalRef ioArray window key scanCode keyState m
                          -- multiModelviewMat ls
                          let lsX = vecToList3 vecXCF ++ [0]
                          let lsZ = vecToList3 vecZCF ++ [0]
-                         let vx3 = (listToVec . join) $ mm `multiVec` lsX
-                         let vz3 = (listToVec . join) $ mm `multiVec` lsZ
+                         let vx3 = listToVec $ mm `multiVecL` lsX
+                         let vz3 = listToVec $ mm `multiVecL` lsZ
                          modifyIORef refCamRot (\s -> s{coordFrameMat_ = let m = coordFrameMat_ s in mm `multiMat` m})
                          modifyIORef refCamRot (\s -> s{coordFrame_ = (vx3, vecYCF, vz3)})
                          mm' <- (cap . printMat) mm
@@ -1212,8 +1212,8 @@ keyBoardCallBack3d refCamRot refGlobalRef ioArray window key scanCode keyState m
                          let (mm, ls) = rotMat4Tup vecZCF (rf $ (pi/180) * rotSpeed)
                          let lsX = vecToList3 vecXCF ++ [0]
                          let lsY = vecToList3 vecYCF ++ [0]
-                         let vx3 = (listToVec . join) $ mm `multiVec` lsX
-                         let vy3 = (listToVec . join) $ mm `multiVec` lsY
+                         let vx3 = listToVec $ mm `multiVecL` lsX
+                         let vy3 = listToVec $ mm `multiVecL` lsY
                          modifyIORef refCamRot (\s -> s{coordFrameMat_ = let m = coordFrameMat_ s in mm `multiMat` m})
                          modifyIORef refCamRot (\s -> s{coordFrame_ = (vx3, vy3, vecZCF)})
                      | v == 4 -> do
@@ -1237,8 +1237,8 @@ keyBoardCallBack3d refCamRot refGlobalRef ioArray window key scanCode keyState m
                          let (mm, ls) = rotMat4Tup vecXCF (rf $ (pi/180) * negate rotSpeed)
                          let lsY = vecToList3 vecYCF ++ [0]
                          let lsZ = vecToList3 vecZCF ++ [0]
-                         let vy3 = (listToVec . join) $ mm `multiVec` lsY
-                         let vz3 = (listToVec . join) $ mm `multiVec` lsZ
+                         let vy3 = listToVec $ mm `multiVecL` lsY
+                         let vz3 = listToVec $ mm `multiVecL` lsZ
                          modifyIORef refCamRot (\s -> s{coordFrameMat_ = let m = coordFrameMat_ s in mm `multiMat` m})
                          modifyIORef refCamRot (\s -> s{coordFrame_ = (vecXCF, vy3, vz3)})
                      | v == 2 -> do
@@ -1248,8 +1248,8 @@ keyBoardCallBack3d refCamRot refGlobalRef ioArray window key scanCode keyState m
                          let (mm, ls) = rotMat4Tup vecYCF (rf $ (pi/180) * negate rotSpeed)
                          let lsX = vecToList3 vecXCF ++ [0]
                          let lsZ = vecToList3 vecZCF ++ [0]
-                         let vx3 = (listToVec . join) $ mm `multiVec` lsX
-                         let vz3 = (listToVec . join) $ mm `multiVec` lsZ
+                         let vx3 = listToVec $ mm `multiVecL` lsX
+                         let vz3 = listToVec $ mm `multiVecL` lsZ
 
                          modifyIORef refCamRot (\s -> s{coordFrameMat_ = let m = coordFrameMat_ s in mm `multiMat` m})
                          modifyIORef refCamRot (\s -> s{coordFrame_ = (vx3, vecYCF, vz3)})
@@ -1261,8 +1261,8 @@ keyBoardCallBack3d refCamRot refGlobalRef ioArray window key scanCode keyState m
                          let (mm, ls) = rotMat4Tup vecZCF (rf $ (pi/180) * negate rotSpeed)
                          let lsX = vecToList3 vecXCF ++ [0]
                          let lsY = vecToList3 vecYCF ++ [0]
-                         let vx3 = (listToVec . join) $ mm `multiVec` lsX
-                         let vy3 = (listToVec . join) $ mm `multiVec` lsY
+                         let vx3 = listToVec $ mm `multiVecL` lsX
+                         let vy3 = listToVec $ mm `multiVecL` lsY
                          modifyIORef refCamRot (\s -> s{coordFrameMat_ = let m = coordFrameMat_ s in mm `multiMat` m})
                          modifyIORef refCamRot (\s -> s{coordFrame_ = (vx3, vy3, vecZCF)})
                      | v == 4 -> do
@@ -2423,10 +2423,10 @@ rotVec k v theta = ax + bx + cx
     skew = skewMatrix3 $ f k
     ax = v
     bx = let a = sin theta
-             b = (vec . join) $ skew `multiVec` toList v
+             b = vec $ skew `multiVecL` toList v
          in  a *: b
     cx = let a  = 1 - cos theta
-             b = (vec $ join $  skew `multiVec` join (skew `multiVec` toList v))
+             b = (vec $  skew `multiVecL` (skew `multiVecL` toList v))
          in a *: b
 
 {-|
@@ -2530,7 +2530,7 @@ mulMat :: [[GLfloat]] -> Vertex3 GLfloat -> Vertex3 GLfloat
 mulMat cx vx = v0
   where
     ls = vexToList vx
-    v0 = listToVex $ join $ cx `multiVec` ls
+    v0 = listToVex $  cx `multiVecL` ls
 
 translateMap :: Vector3 GLdouble -> [Vertex3 GLdouble] -> [Vertex3 GLdouble]
 translateMap  v = map (+: v)
@@ -2542,13 +2542,12 @@ rotVerMap m cx p0 = map (\w -> let u = lv $ join $ m ∘ mt (w - p0) in u + p0) 
                          lv = listToVer
 
 multiVertex :: [[GLdouble]] -> Vertex3 GLdouble -> Vertex3 GLdouble
-multiVertex m v = listToVer $ join $ m `multiVec` vs
+multiVertex m v = listToVer $ m `multiVecL` vs
   where
     vs = verToList v
   
 mv = multiVertex
 
-  
 {-|
 
   @
@@ -2751,14 +2750,14 @@ ellipseRot (rx, rz) (rotY, rotUp) p0@(Vertex3 x0 y0 z0) = (lt, m₄)
           α = rotY
           β = rotUp
           m₁ = v₁ `rotMat` α
-          v₂ = listToVec $ join $ m₁ `multiVec` e₁
+          v₂ = listToVec $ m₁ `multiVecL` e₁
           vn = case v₂ `crossF` v₁ of
                        Just v -> v
                        Nothing -> error "v₂ v₁ can not be parallel"
           m₂ = vn `rotMat` β
           m₃ = m₂ ∘ m₁
           m₄ = padMat3To4Tran m₃ (verToList p0)
-          mu m u = let w = join $ m `multiVec` verToList u in Vertex3 (head w) ((head . tail) w) (last w)
+          mu m u = let w = m `multiVecL` verToList u in Vertex3 (head w) ((head . tail) w) (last w)
           num = 10
           pi2 = 2*pi::GLdouble
           -- ls = [let alpha = (pi2*n)/num in Vertex3 (r1 * cos alpha) 0 (r2 * sin alpha) | n <- [0..num]]
@@ -2771,9 +2770,26 @@ cls = join . repeat
 combineColor :: [a] -> [a] -> [b] -> [(a, b)]
 combineColor cx cy cc = let cs = join $ zipWith (\p q -> [p, q]) cx cy in zip cs cc
 
-combineList :: [a] -> [a] -> [a]
-combineList cx cy = join $ zipWith (\a b -> [a, b]) cx cy
+  
+{-|
+  NOTE: deprecated, use 'catVList'
+-}
+combineList_ :: [a] -> [a] -> [a]
+combineList_ cx cy = join $ zipWith (\a b -> [a, b]) cx cy
 
+{-|
+
+   @
+   r = [1, 2, 3]
+   s = [4, 5, 6]
+   ls = catVList r s
+   ls
+   -- [1,4,2,5,3,6]
+   @
+-}
+catVList:: [a] -> [a] -> [a]
+catVList cx cy = join $ zipWith (\a b -> [a, b]) cx cy
+  
 drawCylinderEX :: (Vertex3 GLdouble, [Vertex3 GLdouble], [Color3 GLdouble]) -> (Vertex3 GLdouble, [Vertex3 GLdouble], [Color3 GLdouble]) -> IO()
 drawCylinderEX (p0, cx0, cc0) (p1, cx1, cc1) = do
   let cc = cls [blue, green]

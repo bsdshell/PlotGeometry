@@ -1,3 +1,4 @@
+import qualified System.Console.Pretty as SCP
 
 p = printMat
 rs = redisSet
@@ -57,3 +58,38 @@ p2 = Vertex3 0 b 0
 tx2 = isColinearXY2d p0 p1 p2
 fw "tx2"
 tx2
+
+
+:{
+    let strToPi :: [Token] -> [String]
+        strToPi [] = []
+        strToPi cx = map(\t -> case t of
+                                        AlphaNum s -> s == "pi" ? "3.14159" $ s 
+                                        NumberX  s -> s 
+                                        TokLP s -> s
+                                        TokRP s -> s
+                                        TokLCB s -> s
+                                        TokRCB s -> s
+                                        TokLSB s -> s
+                                        TokRSB s -> s
+                                        TokLT s -> s
+                                        TokGT s -> s
+                                        TokColon s -> s
+                                        TokEqual s -> s
+                                        TokForwardslash s -> s
+                                        TokBackslash s -> s
+                                        TokSQ    s -> s
+                                        TokDQ    s -> s
+                                        OpSub    s -> s
+                                        DQString s -> s
+                                        SQString s -> s
+                                        WSpace s   -> s
+                                        SymEqualRightArrow s -> s
+                                        SymSubRightArrow   s -> s
+                                        SymTwoEqual s -> s
+                                        SymTwoColon s -> s
+                                        Unknown s -> s
+                                        _       -> []
+                            ) cx 
+
+:}

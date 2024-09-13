@@ -556,6 +556,7 @@ drawParamSphereX isFilled ss cc = do
  - KEY: 
  - NOTE: right hand rule
  -}
+{--
 isCCW3d :: (Floating a, Ord a) => (Vertex3 a, Vertex3 a, Vertex3 a) -> Bool 
 isCCW3d (p0, p1, p2) | not $ ((abs $ ang - pi/2) < epsilon) && ang < pi/2 = True
                      | not $ ((abs $ ang - pi/2) < epsilon) && ang > pi/2 = False
@@ -568,8 +569,9 @@ isCCW3d (p0, p1, p2) | not $ ((abs $ ang - pi/2) < epsilon) && ang < pi/2 = True
     ang = case vn of
             Just v -> angle2Vector v (Vector3 0 1 0)     
             Nothing -> error "ERROR: three pts does not form a triangle"
+--}
 
-
+{--
 isCCW :: (Floating a, Ord a) => (Vertex3 a, Vertex3 a, Vertex3 a) -> (Vector3 a) -> Bool
 isCCW (p0, p1, p2) up = if notAll ve then (ang < pi/2 ? True $ False) else ((x' + y' + z') > 0 ? True $ False)
   where
@@ -584,8 +586,24 @@ isCCW (p0, p1, p2) up = if notAll ve then (ang < pi/2 ? True $ False) else ((x' 
     x' = ve_1 ve 
     y' = ve_2 ve
     z' = ve_3 ve
-        
-
+--}        
+isCCW :: (Vertex3 GLdouble, Vertex3 GLdouble, Vertex3 GLdouble) -> Vector3 GLdouble -> Bool
+isCCW (p0, p1, p2) up = if notAll ve then ang < pi/2 ? True $ False else sum (vecToList ve) > 0 ? True $ False
+  where
+    epsilon = 1e-12
+    v01 = p0 -: p1
+    v12 = p1 -: p2
+    vc = v01 `crossF` v12
+    notAll (Vector3 x y z) = x /= 0 && y /= 0 && z /= 0
+    ve = case vc of
+            Just v -> v
+            Nothing -> error "ERROR: three pts are colinear"
+    ang = angle2Vector ve up
+    del = abs $ ang - pi/2
+    fa = case del of
+              d | del <= epsilon -> True
+                | ang < pi/2     -> True
+                | otherwise      -> False
 
 
 mainLoop ::
@@ -785,7 +803,8 @@ mainLoop (w3d, w2d) (refCamRot3d, refCamRot2d) refGlobal refGlobalFrame animaSta
     --                                                  |
     --                                                  + -> speed, larger = slower
     let slotNum0 = 0
-    (isNext0, index, animaState) <- readAnimaState animaStateArr slotNum0 1000
+    -- (isNext0, index, animaState) <- readAnimaState animaStateArr slotNum0 1000
+    (isNext0, index, _, _, _,_,_, animaState) <- readAnimaState animaStateArr slotNum0 1000 
 
     -- logFileG ["index=" ++ show index]
     logFileG ["isNextX=" ++ show isNext0 ++ " animaIndex_=" ++ show (animaIndex_ animaState)]
@@ -927,16 +946,17 @@ mainLoop (w3d, w2d) (refCamRot3d, refCamRot2d) refGlobal refGlobalFrame animaSta
     let width = 0.3
     let height = 0.2
     delta <- getRedisXf "delta" <&> rf
-    str <- getRedisXStr "str"
-    let s = DT.readMaybe str :: (Maybe [GLfloat])
-    let ls = fromMaybe [] s
+    str <- getRedisX "str"
+    -- let s = DT.readMaybe str :: (Maybe [GLfloat])
+    -- let ls = fromMaybe [] s
     -- n = len ls > 0 ? last ls $ 10
     n <- getRedisXf "n" <&> rf
 
     let anima1 = 6
     xx <- getRedisX "int"
     let interval = xx
-    (isNext1, index1, animaState1) <- readAnimaState animaStateArr anima1 interval
+    -- (isNext1, index1, animaState1) <- readAnimaState animaStateArr anima1 interval
+    (isNext1, index1, _, _, _,_,_, animaState1) <- readAnimaState animaStateArr anima1 interval
     let del = pi/100
     let lv = [[Vertex3 (1/n*x) (1/n*y) 0 | x <- [0.0..n]]| y <- [0.0..n]] :: [[Vertex3 GLfloat]]
     renderPrimitive Points $ mapM_(\v@(Vertex3 x y z) -> do

@@ -585,20 +585,37 @@ drawParamSphereX isFilled ss cc = do
  - KEY: 
  - NOTE: right hand rule
  -}
-isCCW3d :: (Floating a, Ord a) => (Vertex3 a, Vertex3 a, Vertex3 a) -> Bool 
-isCCW3d (p0, p1, p2) | not $ ((abs $ ang - pi/2) < epsilon) && ang < pi/2 = True
-                     | not $ ((abs $ ang - pi/2) < epsilon) && ang > pi/2 = False
-                     | otherwise = error "ERROR: isCCW3d"
+-- isCCW3d :: (Floating a, Ord a) => (Vertex3 a, Vertex3 a, Vertex3 a) -> Bool 
+-- isCCW3d (p0, p1, p2) | not $ ((abs $ ang - pi/2) < epsilon) && ang < pi/2 = True
+--                      | not $ ((abs $ ang - pi/2) < epsilon) && ang > pi/2 = False
+--                      | otherwise = error "ERROR: isCCW3d"
+--   where
+--     epsilon = 1e-12
+--     v10 = p1 -: p0
+--     v12 = p1 -: p2
+--     vn = v10 `crossF` v12
+--     ang = case vn of
+--             Just v -> angle2Vector v (Vector3 0 1 0)     
+--             Nothing -> error "ERROR: three pts does not form a triangle"
+
+isCCW :: (Vertex3 GLdouble, Vertex3 GLdouble, Vertex3 GLdouble) -> Vector3 GLdouble -> Bool
+isCCW (p0, p1, p2) up = if notAll ve then ang < pi/2 ? True $ False else sum (vecToList ve) > 0 ? True $ False
   where
     epsilon = 1e-12
-    v10 = p1 -: p0
+    v01 = p0 -: p1
     v12 = p1 -: p2
-    vn = v10 `crossF` v12
-    ang = case vn of
-            Just v -> angle2Vector v (Vector3 0 1 0)     
-            Nothing -> error "ERROR: three pts does not form a triangle"
-
-
+    vc = v01 `crossF` v12
+    notAll (Vector3 x y z) = x /= 0 && y /= 0 && z /= 0
+    ve = case vc of
+            Just v -> v
+            Nothing -> error "ERROR: three pts are colinear"
+    ang = angle2Vector ve up
+    del = abs $ ang - pi/2
+    fa = case del of
+              d | del <= epsilon -> True
+                | ang < pi/2     -> True
+                | otherwise      -> False
+{--
 isCCW :: (Floating a, Ord a) => (Vertex3 a, Vertex3 a, Vertex3 a) -> (Vector3 a) -> Bool
 isCCW (p0, p1, p2) up = if notAll ve then (ang < pi/2 ? True $ False) else ((x' + y' + z') > 0 ? True $ False)
   where
@@ -613,7 +630,8 @@ isCCW (p0, p1, p2) up = if notAll ve then (ang < pi/2 ? True $ False) else ((x' 
     x' = ve_1 ve 
     y' = ve_2 ve
     z' = ve_3 ve
-        
+--}        
+
 fpath = "/Users/aaa/myfile/github/PlotGeometry/" </> "draw.hs"
 
 data ArgInput = ArgInput{
